@@ -85,35 +85,50 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [data?.team?.startedAt]);
 
-  const handleSubmission = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proofFile) return alert("You must upload a proof image.");
-    
+    if (!submission || !proofFile) return;
     setSubmitting(true);
-    
-    const formData = new FormData();
-    formData.append("action", "submit");
-    formData.append("answer", submission);
-    formData.append("proof", proofFile);
 
     try {
-      const res = await fetch("/api/dashboard/action", {
-        method: "POST",
-        body: formData
-      });
-      const json = await res.json();
-      
-      if (json.success) {
-        alert(json.message);
-        setSubmission("");
-        setProofFile(null);
-      } else {
-        alert("Error: " + json.error);
-      }
+      // Compress image to Base64 to bypass Firebase Storage paywalls and fit within Firestore limits
+      const reader = new FileReader();
+      reader.readAsDataURL(proofFile);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Export as compressed JPEG base64 (quality 0.6)
+          const base64Proof = canvas.toDataURL("image/jpeg", 0.6);
+
+          const formData = new FormData();
+          formData.append("action", "submit");
+          formData.append("answer", submission);
+          formData.append("proofBase64", base64Proof); // Send the base64 string instead of the file
+
+          const res = await fetch("/api/dashboard/action", { method: "POST", body: formData });
+          const json = await res.json();
+          if (json.success) {
+            setSubmission("");
+            setProofFile(null);
+            alert("Success! " + json.message);
+          } else {
+            alert("Error: " + json.error);
+          }
+          setSubmitting(false);
+        };
+      };
     } catch (err) {
       console.error(err);
       alert("Submission failed. Please try again.");
-    } finally {
       setSubmitting(false);
     }
   };

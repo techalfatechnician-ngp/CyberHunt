@@ -46,34 +46,21 @@ export async function POST(request: NextRequest) {
 
     if (action === "submit") {
       const answer = formData.get("answer") as string;
-      const proof = formData.get("proof") as File;
+      const proofBase64 = formData.get("proofBase64") as string;
       
-      if (!answer || !proof) return NextResponse.json({ error: "Answer and proof are required" }, { status: 400 });
+      if (!answer || !proofBase64) return NextResponse.json({ error: "Answer and proof are required" }, { status: 400 });
 
       const teamDoc = await teamDocRef.get();
       const current_level = teamDoc.data()?.current_level || 1;
 
-      // Upload proof to Firebase Storage
-      const fileBuffer = await proof.arrayBuffer();
-      const fileName = `proofs/${user.team_id}/level_${current_level}_${uuidv4()}_${proof.name}`;
-      const bucket = storage.bucket();
-      const file = bucket.file(fileName);
-      
-      await file.save(Buffer.from(fileBuffer), {
-        metadata: { contentType: proof.type }
-      });
-
-      // Construct standard Firebase Storage URL without calling makePublic() which crashes on new buckets
-      const proofUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
-
-      // We just store the submission for Admin approval
-      // In a real automated system we might check answer hash here, but the user said Admin approves proofs.
+      // We just store the submission for Admin approval directly with the highly compressed base64 string
+      // This bypasses Firebase Storage completely and fits safely inside Firestore's 1MB limit.
       await db.collection("submissions").add({
         team_id: user.team_id,
         team_name: teamDoc.data()?.team_name,
         level_id: current_level,
         answer: answer.toUpperCase().trim(),
-        proof_url: proofUrl,
+        proof_url: proofBase64, // The base64 string acts as the image URL
         status: "pending",
         timestamp: new Date()
       });

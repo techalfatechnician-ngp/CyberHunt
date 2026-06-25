@@ -53,24 +53,42 @@ export async function POST(request: NextRequest) {
       const teamDoc = await teamDocRef.get();
       const current_level = teamDoc.data()?.current_level || 1;
 
-      // We just store the submission for Admin approval directly with the highly compressed base64 string
-      // This bypasses Firebase Storage completely and fits safely inside Firestore's 1MB limit.
+      // We store the submission for Admin approval
       await db.collection("submissions").add({
         team_id: user.team_id,
         team_name: teamDoc.data()?.team_name,
         level_id: current_level,
         answer: answer.toUpperCase().trim(),
-        proof_url: proofBase64, // The base64 string acts as the image URL
+        proof_url: proofBase64,
         status: "pending",
         timestamp: new Date()
       });
 
+      // INSTANT ADVANCEMENT: User advances immediately, gets fragment, and score
+      const newLevel = current_level + 1;
+      const teamData = teamDoc.data();
+      const scoreInc = 1000 - (teamData?.global_hints_used || 0) * 100;
+      const newScore = (teamData?.score || 0) + (scoreInc > 0 ? scoreInc : 100);
+
+      const fragments = teamData?.fragments || Array(9).fill("");
+      const levelIndex = current_level - 1;
+      if (levelIndex >= 0 && levelIndex < 9) {
+        fragments[levelIndex] = answer.substring(0, 1).toUpperCase();
+      }
+
+      await teamDocRef.update({
+        current_level: newLevel,
+        score: newScore,
+        last_submission_at: new Date(),
+        fragments
+      });
+
       await db.collection("activity_logs").add({
-        message: `${teamDoc.data()?.team_name} uploaded Intel for Level ${current_level}`,
+        message: `${teamData?.team_name} uploaded Intel for Level ${current_level} and instantly advanced to Level ${newLevel}.`,
         timestamp: new Date()
       });
 
-      return NextResponse.json({ success: true, message: "Submission sent to Mission Control for verification." });
+      return NextResponse.json({ success: true, message: `Submission sent! You have advanced to Level ${newLevel}.` });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

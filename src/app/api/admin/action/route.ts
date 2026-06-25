@@ -24,26 +24,9 @@ export async function POST(request: NextRequest) {
 
     if (action === "approve") {
       await subRef.update({ status: "approved" });
-      const newLevel = (teamData.current_level || 1) + 1;
-      const scoreInc = 1000 - (teamData.global_hints_used || 0) * 100;
-      const newScore = (teamData.score || 0) + (scoreInc > 0 ? scoreInc : 100);
-
-      const fragments = teamData.fragments || Array(9).fill("");
-      // Safely store the submitted fragment in the array based on their level
-      const levelIndex = (subData.level_id || 1) - 1;
-      if (levelIndex >= 0 && levelIndex < 9) {
-        fragments[levelIndex] = subData.answer.substring(0, 1).toUpperCase();
-      }
-
-      await teamRef.update({
-        current_level: newLevel,
-        score: newScore,
-        last_submission_at: new Date(),
-        fragments
-      });
 
       await db.collection("activity_logs").add({
-        message: `Mission Control APPROVED Level ${subData.level_id} intel for ${teamData.team_name}. Proceeding to Level ${newLevel}.`,
+        message: `Mission Control APPROVED Level ${subData.level_id} intel for ${teamData.team_name}.`,
         timestamp: new Date()
       });
 

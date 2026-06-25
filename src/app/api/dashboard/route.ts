@@ -1,125 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import {
-  getEventSettings,
-  getEventPhase,
-  getCurrentLevel,
-  getTimeRemaining,
-} from "@/lib/event";
+import { db } from "@/lib/firebase/admin";
+import { getAuthUser } from "@/lib/auth";
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const settings = await getEventSettings();
-    if (!settings) {
-      return NextResponse.json(
-        { error: "Event configuration error" },
-        { status: 500 }
-      );
+    const teamDocRef = db.collection("teams").doc(user.team_id);
+    const teamDoc = await teamDocRef.get();
+    
+    if (!teamDoc.exists) {
+      return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    const now = new Date();
-    const phase = getEventPhase(settings, now);
-    const timeRemaining = getTimeRemaining(settings, now);
-    const currentLevel = await getCurrentLevel(user.team_id);
+    let teamData = teamDoc.data()!;
 
-    const { data: team } = await supabaseAdmin
-      .from("teams")
-      .select("team_name, team_id")
-      .eq("team_id", user.team_id)
-      .single();
-
-    const { data: progressData } = await supabaseAdmin
-      .from("progress")
-      .select("level_id, solved_at, hints_used")
-      .eq("team_id", user.team_id)
-      .order("level_id", { ascending: true });
-
-    const solvedLevels = (progressData || []).filter(
-      (p) => p.solved_at !== null
-    ).length;
-
-    const totalHintsUsed = (progressData || []).reduce((sum, p) => {
-      return sum + (p.hints_used?.length || 0);
-    }, 0);
-
-    let totalScore = 0;
-    for (const p of progressData || []) {
-      if (!p.solved_at) continue;
-      let levelScore = 100;
-      const hints = p.hints_used || [];
-      if (hints.includes(1)) levelScore -= 10;
-      if (hints.includes(2)) levelScore -= 20;
-      if (hints.includes(3)) levelScore -= 30;
-      totalScore += Math.max(0, levelScore);
+    // Initialize game timer on first dashboard load
+    if (!teamData.started_at) {
+      const now = new Date();
+      await teamDocRef.update({ started_at: now });
+      teamData.started_at = now;
     }
 
-    const { data: allTeams } = await supabaseAdmin
-      .from("teams")
-      .select("team_id");
+    const startTime = teamData.started_at?.toMillis ? teamData.started_at.toMillis() : teamData.started_at instanceof Date ? teamData.started_at.getTime() : Date.now();
+    // Fetch active agents (other teams)
+    const teamsSnapshot = await db.collection("teams").orderBy("score", "desc").limit(50).get();
+    const activeAgents = teamsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      const lastSub = data.last_submission_at;
+      const subTime = lastSub?.toMillis ? lastSub.toMillis() : lastSub?.getTime ? lastSub.getTime() : Date.now();
+      
+      return {
+        id: data.team_id,
+        name: data.team_name,
+        level: data.current_level || 1,
+        status: data.is_disqualified ? "Disqualified" : (Date.now() - subTime > 1000 * 60 * 60 * 2) ? "Stuck" : "Active"
+      };
+    });
 
-    const { data: allProgress } = await supabaseAdmin
-      .from("progress")
-      .select("team_id, solved_at")
-      .not("solved_at", "is", null);
-
-    const teamSolvedMap: Record<string, number> = {};
-    for (const p of allProgress || []) {
-      teamSolvedMap[p.team_id] = (teamSolvedMap[p.team_id] || 0) + 1;
-    }
-
-    const mySolved = solvedLevels;
-    let rank = 1;
-    for (const t of allTeams || []) {
-      if (t.team_id === user.team_id) continue;
-      if ((teamSolvedMap[t.team_id] || 0) > mySolved) {
-        rank++;
-      }
-    }
-
-    const { data: fragmentsData } = await supabaseAdmin
-      .from("progress")
-      .select("level_id, solved_at")
-      .eq("team_id", user.team_id)
-      .not("solved_at", "is", null);
-
-    const fragments: { level_id: number; value: string }[] = [];
-    if (fragmentsData && fragmentsData.length > 0) {
-      const { data: levels } = await supabaseAdmin
-        .from("levels")
-        .select("level_id, fragment")
-        .in(
-          "level_id",
-          fragmentsData.map((f) => f.level_id)
-        );
-      for (const l of levels || []) {
-        fragments.push({ level_id: l.level_id, value: l.fragment });
-      }
-    }
+    // Fetch Live Network Feed
+    const feedSnapshot = await db.collection("activity_logs").orderBy("timestamp", "desc").limit(10).get();
+    const liveFeed = feedSnapshot.docs.map(doc => {
+      const data = doc.data();
+      const ts = data.timestamp;
+      const date = ts?.toDate ? ts.toDate() : ts instanceof Date ? ts : new Date(ts || Date.now());
+      const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+      return {
+        id: doc.id,
+        time: timeString,
+        text: data.message
+      };
+    });
 
     return NextResponse.json({
-      team_name: team?.team_name || "Unknown",
-      team_id: user.team_id,
-      rank,
-      current_level: currentLevel,
-      levels_solved: solvedLevels,
-      total_hints_used: totalHintsUsed,
-      score: totalScore,
-      fragments,
-      event_status: phase,
-      time_remaining_s: timeRemaining,
-      total_paused_ms: settings.total_paused_ms,
+      team: {
+        id: teamData.team_id,
+        name: teamData.team_name,
+        current_level: teamData.current_level || 1,
+        hints_used: teamData.global_hints_used || 0,
+        ai_strikes: teamData.ai_strikes || 0,
+        score: teamData.score || 0,
+        fragments: teamData.fragments || Array(9).fill(""),
+        startedAt: startTime,
+      },
+      liveFeed,
+      activeAgents,
+      total_levels: 10
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("Dashboard error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error("Dashboard API error:", error);
+    return NextResponse.json({ error: error.message || "Internal server error", stack: error.stack }, { status: 500 });
   }
 }

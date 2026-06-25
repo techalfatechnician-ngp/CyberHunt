@@ -1,217 +1,171 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/components/layout/header";
-import CountdownTimer from "@/components/game/countdown-timer";
-import FragmentInventory from "@/components/game/fragment-inventory";
-import LevelProgress from "@/components/game/level-progress";
-import LeaderboardTable from "@/components/game/leaderboard-table";
-import Card, { CardHeader, CardBody } from "@/components/ui/card";
-import Button from "@/components/ui/button";
-import type { DashboardData, LeaderboardEntry } from "@/types";
+
+interface DashboardData {
+  team: {
+    id: string;
+    name: string;
+    current_level: number;
+    hints_used: number;
+    ai_strikes: number;
+    score: number;
+    fragments: string[];
+    startedAt: number;
+  };
+  liveFeed: { id: string; time: string; text: string; }[];
+  activeAgents: { id: string; name: string; level: number; status: string; }[];
+  total_levels: number;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [fragments, setFragments] = useState<string[]>(Array(9).fill(""));
+  const [submission, setSubmission] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [hintWarning, setHintWarning] = useState(false);
+  const [activeHint, setActiveHint] = useState<string | null>(null);
+  const [activeHintLink, setActiveHintLink] = useState<string | null>(null);
 
-  const fetchDashboard = useCallback(async () => {
+  const [timeLeft, setTimeLeft] = useState("90:00:00");
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [selectedHintId, setSelectedHintId] = useState<number | null>(null);
+
+  const fetchDashboardData = async () => {
     try {
       const res = await fetch("/api/dashboard");
       if (res.status === 401) {
-        router.push("/login");
+        router.push("/");
         return;
       }
       const json = await res.json();
+      if (json.error) {
+        console.error("Dashboard API returned an error:", json.error, json.stack);
+        return;
+      }
       setData(json);
+      if (loading && json.team) {
+        setFragments(json.team.fragments);
+        setLoading(false);
+      }
     } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch dashboard data:", err);
     }
-  }, [router]);
+  };
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch("/api/leaderboard");
-      const json = await res.json();
-      setLeaderboard(json.teams || []);
-    } catch (err) {
-      console.error("Leaderboard fetch error:", err);
-    }
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
-    fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 30000);
+    if (!data?.team?.startedAt) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - data.team.startedAt;
+      const remaining = Math.max(0, 90 * 60 * 1000 - elapsed);
+      
+      const totalSeconds = Math.floor(remaining / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      
+      setTimeLeft(
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+      setElapsedMinutes(Math.floor(elapsed / 60000));
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [fetchDashboard, fetchLeaderboard]);
+  }, [data?.team?.startedAt]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="text-accent font-mono text-sm animate-pulse">
-          Loading mission control...
-        </div>
-      </div>
-    );
-  }
+  const handleSubmission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proofFile) return alert("You must upload a proof image.");
+    
+    setSubmitting(true);
+    
+    const formData = new FormData();
+    formData.append("action", "submit");
+    formData.append("answer", submission);
+    formData.append("proof", proofFile);
 
-  if (!data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="text-red font-mono text-sm">Failed to load dashboard</div>
-      </div>
-    );
-  }
-
-  const handleStartLevel = () => {
-    router.push(`/play/${data.current_level}`);
+    try {
+      const res = await fetch("/api/dashboard/action", {
+        method: "POST",
+        body: formData
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        alert(json.message);
+        setSubmission("");
+        setProofFile(null);
+      } else {
+        alert("Error: " + json.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Submission failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  const handleHintClick = (hintId: number) => {
+    setSelectedHintId(hintId);
+    setHintWarning(true);
+  };
+  const confirmHint = async () => {
+    setHintWarning(false);
+    try {
+      const formData = new FormData();
+      formData.append("action", "hint");
+      formData.append("hintId", data?.team.current_level.toString() || "1");
+      const res = await fetch("/api/dashboard/action", { method: "POST", body: formData });
+      const json = await res.json();
+      if (json.success) {
+        setActiveHint(json.hint);
+        setActiveHintLink(json.hintLink);
+        fetchDashboardData();
+      } else {
+        alert("Error: " + json.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    setActiveHint(null);
+    setActiveHintLink(null);
+  }, [data?.team?.current_level]);
+
+  if (loading || !data) {
+    return (
+      <div className="min-h-screen bg-bg bg-grid-pattern flex items-center justify-center font-mono">
+        <div className="text-accent text-xl tracking-widest animate-pulse">ESTABLISHING SECURE CONNECTION...</div>
+      </div>
+    );
+  }
+
+  const { team, activeAgents, total_levels } = data;
+
+  const hintsConfig = [
+    { id: 1, unlockMin: 10 },
+    { id: 2, unlockMin: 20 },
+    { id: 3, unlockMin: 30 },
+    { id: 4, unlockMin: 40 },
+    { id: 5, unlockMin: 50 },
+  ];
+
   return (
-    <div className="min-h-screen bg-bg">
-      <Header teamName={data.team_name} />
-
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Timer + Status Bar */}
-        <div className="mb-6">
-          <Card>
-            <CardBody className="py-6">
-              <CountdownTimer
-                totalSeconds={data.time_remaining_s}
-                eventStatus={data.event_status}
-              />
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Status Badges */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-1.5">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                data.event_status === "active"
-                  ? "bg-accent animate-pulse"
-                  : data.event_status === "paused"
-                  ? "bg-amber"
-                  : data.event_status === "ended"
-                  ? "bg-red"
-                  : "bg-text3"
-              }`}
-            />
-            <span className="text-xs text-text2 font-medium capitalize">
-              {data.event_status === "not_started"
-                ? "Standby"
-                : data.event_status}
-            </span>
-          </div>
-          <div className="bg-surface border border-border rounded-lg px-3 py-1.5">
-            <span className="text-xs text-text3">Rank </span>
-            <span className="text-xs text-accent font-mono font-bold">
-              #{data.rank}
-            </span>
-          </div>
-          <div className="bg-surface border border-border rounded-lg px-3 py-1.5">
-            <span className="text-xs text-text3">Score </span>
-            <span className="text-xs text-amber font-mono font-bold">
-              {data.score}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Current Mission */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-text">
-                    Mission {data.current_level} of 10
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                      data.event_status === "active"
-                        ? "bg-accent/10 text-accent border border-accent/20"
-                        : data.event_status === "paused"
-                        ? "bg-amber/10 text-amber border border-amber/20"
-                        : "bg-text3/10 text-text3 border border-border"
-                    }`}
-                  >
-                    {data.event_status === "active"
-                      ? "ACTIVE"
-                      : data.event_status === "paused"
-                      ? "PAUSED"
-                      : "LOCKED"}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <LevelProgress
-                  currentLevel={data.current_level}
-                  levelsSolved={data.levels_solved}
-                />
-                {data.event_status === "active" && (
-                  <div className="mt-4">
-                    <Button
-                      onClick={handleStartLevel}
-                      className="w-full"
-                      size="lg"
-                    >
-                      {data.levels_solved === 0
-                        ? "Begin Mission"
-                        : `Continue to Level ${data.current_level}`}
-                    </Button>
-                  </div>
-                )}
-                {data.event_status === "paused" && (
-                  <div className="mt-4 text-center">
-                    <p className="text-amber text-sm">
-                      Event is paused. Waiting for admin to resume.
-                    </p>
-                  </div>
-                )}
-                {data.event_status === "ended" && (
-                  <div className="mt-4 text-center">
-                    <p className="text-red text-sm">
-                      Mission time has ended.
-                    </p>
-                  </div>
-                )}
-              </CardBody>
-            </Card>
-
-            {/* Leaderboard */}
-            <Card>
-              <CardHeader>
-                <span className="text-sm font-semibold text-text">
-                  Live Leaderboard
-                </span>
-              </CardHeader>
-              <CardBody className="p-0">
-                <LeaderboardTable
-                  teams={leaderboard}
-                  currentTeamId={data.team_id}
-                />
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-4">
-            {/* Fragments */}
-            <Card>
-              <CardBody>
-                <FragmentInventory fragments={data.fragments} />
-              </CardBody>
-            </Card>
-
-            {/* Team Info */}
-            <Card>
     <div className="min-h-screen bg-bg bg-grid-pattern font-mono text-sm pb-12">
       
       {/* Navbar */}
@@ -221,9 +175,12 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-6">
           <div className="text-text2">
-            AGENT: <span className="text-accent font-bold tracking-widest">{MOCK_TEAM.name}</span>
+            AGENT: <span className="text-accent font-bold tracking-widest">{team?.name || "UNKNOWN"}</span>
           </div>
-          <button className="text-red hover:text-white border border-red/30 hover:border-red px-3 py-1 rounded transition-colors text-xs tracking-widest uppercase">
+          <button 
+            onClick={() => router.push("/")}
+            className="text-red hover:text-white border border-red/30 hover:border-red px-3 py-1 rounded transition-colors text-xs tracking-widest uppercase"
+          >
             Disconnect
           </button>
         </div>
@@ -235,17 +192,17 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-6 mb-6">
           <div className="flex-1 bg-surface border border-surface2 rounded-xl p-6 shadow-lg flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-50"></div>
-            <div className="text-5xl font-display font-bold text-accent text-glow mb-2">90:00:00</div>
+            <div className="text-6xl font-display font-bold text-accent text-glow mb-2 tracking-wider">{timeLeft}</div>
             <div className="text-text3 text-xs tracking-widest uppercase font-bold">Time Remaining</div>
           </div>
           <div className="bg-surface border border-surface2 rounded-xl p-6 shadow-lg flex items-center justify-center gap-12">
             <div className="text-center">
-              <div className="text-2xl font-bold text-amber mb-1">{MOCK_TEAM.hints_used}</div>
+              <div className="text-2xl font-bold text-amber mb-1">{team?.hints_used || 0}</div>
               <div className="text-text3 text-[10px] tracking-widest uppercase">Hints Used</div>
             </div>
             <div className="w-px h-12 bg-surface2"></div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red mb-1">{MOCK_TEAM.ai_strikes} / 3</div>
+              <div className="text-2xl font-bold text-red mb-1">{team?.ai_strikes || 0} / 3</div>
               <div className="text-text3 text-[10px] tracking-widest uppercase">AI Strikes</div>
             </div>
           </div>
@@ -254,36 +211,119 @@ export default function DashboardPage() {
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left Column (Team Hub) */}
-          <div className="lg:col-span-7 flex flex-col gap-6">
+          {/* Left Column (Scorecard) */}
+          <div className="lg:col-span-3 flex flex-col gap-6">
+            
+            {/* All Teams Status */}
+            <div className="bg-surface border border-surface2 rounded-xl p-0 shadow-lg overflow-hidden flex flex-col h-full min-h-[800px]">
+              <div className="p-4 border-b border-surface2 bg-surface2/20">
+                <h3 className="text-text2 font-bold tracking-widest uppercase text-xs flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Active Agents
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto p-0">
+                <table className="w-full text-left text-[10px]">
+                  <thead className="text-text3 bg-bg/50 border-b border-surface2">
+                    <tr>
+                      <th className="font-medium p-3 tracking-widest">TEAM</th>
+                      <th className="font-medium p-3 tracking-widest">LVL</th>
+                      <th className="font-medium p-3 tracking-widest">STAT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface2">
+                    {(!activeAgents || activeAgents.length === 0) ? (
+                      <tr>
+                        <td colSpan={3} className="p-4 text-center text-text3">No agents.</td>
+                      </tr>
+                    ) : (
+                      activeAgents.map((agent: any) => (
+                        <tr key={agent.id} className="hover:bg-surface2/30 transition-colors">
+                          <td className="p-3">
+                            <div className="text-white font-bold">{agent.name}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex gap-0.5 items-end h-4">
+                                {Array.from({ length: 10 }).map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`w-1.5 rounded-sm transition-all ${i < agent.level ? 'bg-accent shadow-[0_0_5px_rgba(0,255,136,0.5)]' : 'bg-surface2/50'}`}
+                                    style={{ height: `${Math.max(30, (i + 1) * 10)}%` }}
+                                  />
+                                ))}
+                              </div>
+                              <div className="text-accent text-[8px] font-bold tracking-widest">LVL {agent.level}/10</div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] tracking-widest uppercase font-bold border 
+                              ${agent.status === 'Active' ? 'border-accent/30 text-accent bg-accent/5' : 
+                                agent.status === 'Stuck' ? 'border-amber/30 text-amber bg-amber/5' : 
+                                'border-red/30 text-red bg-red/5'}`}>
+                              {agent.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Center Column (Mission Control) */}
+          <div className="lg:col-span-6 flex flex-col gap-6">
             
             {/* Mission Control */}
             <div className="bg-surface border border-surface2 rounded-xl p-6 shadow-lg relative overflow-hidden">
               <div className="flex justify-between items-center mb-6 border-b border-surface2 pb-4">
                 <h2 className="text-xl font-display font-bold text-white tracking-widest">
-                  MISSION {MOCK_TEAM.current_level} <span className="text-text3">OF {MOCK_LEVELS}</span>
+                  MISSION {team?.current_level || 1} <span className="text-text3">OF {total_levels || 10}</span>
                 </h2>
                 <span className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded text-xs font-bold tracking-widest">ACTIVE</span>
               </div>
               
-              {MOCK_TEAM.current_level === 1 ? (
+              {team?.current_level === 1 && (
                 <div className="mb-6 bg-accent/5 border border-accent/20 rounded-lg p-5">
                   <h3 className="text-accent font-bold mb-2 uppercase tracking-widest text-lg">The Game Begins</h3>
                   <p className="text-text2 leading-relaxed mb-4">Your first target is the TechAlfa public repository. Find the initial breach point.</p>
-                  <a href="https://github.com/techalfatechnician-ngp/CyberHunt.git" target="_blank" className="text-blue underline underline-offset-4 decoration-blue/30 hover:text-white transition-colors">
+                  <a href="https://github.com/techalfatechnician-ngp/CyberHunt.git" target="_blank" className="text-blue underline underline-offset-4 decoration-blue/30 hover:text-white transition-colors break-all">
                     https://github.com/techalfatechnician-ngp/CyberHunt.git
                   </a>
                 </div>
-              ) : (
-                <div className="mb-6 flex justify-between items-center bg-surface2/50 rounded-lg p-5 border border-surface2">
-                  <span className="text-text2">Need intel? Request a hint.</span>
-                  <button onClick={handleHintClick} className="bg-amber/10 text-amber hover:bg-amber hover:text-bg border border-amber/30 px-4 py-2 rounded font-bold uppercase tracking-widest transition-all">
-                    Decrypt Hint
-                  </button>
-                </div>
               )}
 
-              {hintWarning && (
+              <div className="mb-6 flex flex-col items-center bg-surface2/50 rounded-lg p-6 border border-surface2">
+                <span className="text-text2 mb-4 text-xs tracking-widest uppercase font-bold">Encrypted Intel Vault</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                  {hintsConfig.map((hint) => {
+                    const isLocked = elapsedMinutes < hint.unlockMin;
+                    return (
+                      <button 
+                        key={hint.id}
+                        onClick={() => !isLocked && handleHintClick(hint.id)}
+                        disabled={isLocked}
+                        className={`w-full py-3 px-4 rounded font-bold uppercase tracking-widest transition-all border flex flex-col items-center justify-center gap-1
+                          ${isLocked 
+                            ? 'bg-surface border-dashed border-surface2 text-text2 cursor-not-allowed' 
+                            : 'bg-amber/10 text-amber hover:bg-amber hover:text-bg border-amber/30'}`}
+                      >
+                        <span className="text-sm">Hint {hint.id}</span>
+                        {isLocked ? (
+                          <span className="text-[9px] font-mono text-text3/70">Unlocks in {hint.unlockMin - elapsedMinutes}m</span>
+                        ) : (
+                          <span className="text-[9px] font-mono">Ready to Decrypt</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {hintWarning && !activeHint && (
                 <div className="mb-6 bg-amber/10 border border-amber p-4 rounded-lg">
                   <h4 className="text-amber font-bold mb-2">WARNING: SCORE PENALTY</h4>
                   <p className="text-text2 text-xs mb-4">Decrypting this hint will permanently reduce your final score. Are you sure you want to proceed?</p>
@@ -291,6 +331,25 @@ export default function DashboardPage() {
                     <button onClick={confirmHint} className="bg-amber text-bg px-4 py-2 rounded text-xs font-bold uppercase">Confirm</button>
                     <button onClick={() => setHintWarning(false)} className="bg-surface2 text-text2 hover:text-white px-4 py-2 rounded text-xs font-bold uppercase">Cancel</button>
                   </div>
+                </div>
+              )}
+
+              {activeHint && (
+                <div className="mb-6 bg-accent/10 border border-accent p-6 rounded-lg w-full flex flex-col items-center text-center">
+                  <h4 className="text-accent font-bold mb-4 uppercase tracking-widest text-sm">Decrypted Intel:</h4>
+                  <p className="text-white text-lg mb-6 leading-relaxed">{activeHint}</p>
+                  
+                  {activeHintLink && (
+                    <a 
+                      href={activeHintLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="bg-accent text-bg px-6 py-3 rounded-full font-bold uppercase tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      FOLLOW LEAD
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -308,8 +367,8 @@ export default function DashboardPage() {
                     value={submission}
                     onChange={(e) => setSubmission(e.target.value)}
                     required
-                    placeholder="ENTER DECRYPTED FLAG..."
-                    className="w-full bg-surface2/50 border border-border/20 rounded-lg px-4 py-3 text-white placeholder-text3 focus:outline-none focus:border-accent transition-colors font-mono text-sm"
+                    placeholder="ENTER SECURED FRAGMENT..."
+                    className="w-full bg-surface2/50 border border-border/20 rounded-lg px-4 py-3 text-white placeholder-text3 focus:outline-none focus:border-accent transition-colors font-mono text-sm uppercase"
                   />
                 </div>
                 <div className="flex items-center justify-between border border-dashed border-surface2 rounded-lg p-4 bg-bg/50">
@@ -318,102 +377,50 @@ export default function DashboardPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     </div>
                     <div>
-                      <div className="text-text2 font-bold text-xs">UPLOAD PROOF</div>
+                      <div className="text-text2 font-bold text-xs uppercase">{proofFile ? proofFile.name : "UPLOAD PROOF"}</div>
                       <div className="text-text3 text-[10px]">PNG, JPG (Max 5MB)</div>
                     </div>
                   </div>
-                  <input type="file" required className="text-xs text-text3 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-bold file:bg-surface2 file:text-white hover:file:bg-surface3 cursor-pointer" />
+                  <input 
+                    type="file" 
+                    required 
+                    accept="image/png, image/jpeg"
+                    onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)}
+                    className="text-xs text-text3 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-bold file:bg-surface2 file:text-white hover:file:bg-surface3 cursor-pointer" 
+                  />
                 </div>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-accent text-bg font-bold tracking-widest uppercase py-4 rounded-lg mt-2 hover:bg-[#00e67a] hover:shadow-[0_0_20px_rgba(0,255,136,0.4)] transition-all"
+                  className="w-full bg-accent text-bg font-bold tracking-widest uppercase py-4 rounded-lg mt-2 hover:bg-[#00e67a] hover:shadow-[0_0_20px_rgba(0,255,136,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? "VERIFYING..." : "SUBMIT INTEL"}
+                  {submitting ? "UPLOADING TO MISSION CONTROL..." : "SUBMIT INTEL"}
                 </button>
               </form>
             </div>
 
-            {/* Editable Fragment Inventory */}
+          </div>
+
+          {/* Right Column (Fragments) */}
+          <div className="lg:col-span-3 flex flex-col gap-6">
             <div className="bg-surface border border-surface2 rounded-xl p-6 shadow-lg">
-              <h3 className="text-text2 font-bold tracking-widest uppercase mb-4 text-xs">Collected Fragments (Notepad)</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <h3 className="text-text2 font-bold tracking-widest uppercase mb-4 text-xs">Secured Fragments</h3>
+              <div className="grid grid-cols-3 gap-2">
                 {fragments.map((frag, idx) => (
                   <div key={idx} className="relative group">
-                    <div className="absolute -top-2 -left-2 text-[10px] text-text3 font-bold bg-surface px-1">L{idx + 1}</div>
+                    <div className="absolute -top-1.5 -left-1.5 text-[8px] text-text3 font-bold bg-surface px-1 z-10">L{idx + 1}</div>
                     <input
                       type="text"
                       maxLength={1}
                       value={frag}
-                      onChange={(e) => handleFragmentChange(idx, e.target.value)}
+                      readOnly
                       placeholder="?"
-                      className="w-full aspect-square bg-bg border border-surface2 rounded-lg text-center text-3xl font-bold text-white placeholder-text3/30 focus:border-accent focus:bg-accent/5 focus:outline-none transition-all uppercase"
+                      className="w-full aspect-square bg-bg border border-surface2 rounded-md text-center text-xl font-bold text-white placeholder-text3/30 focus:outline-none transition-all uppercase relative cursor-not-allowed"
                     />
                   </div>
                 ))}
               </div>
             </div>
-
-          </div>
-
-          {/* Right Column (Live Feed & Status) */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            
-            {/* Live Feed */}
-            <div className="bg-surface border border-surface2 rounded-xl p-0 shadow-lg overflow-hidden flex flex-col h-[400px]">
-              <div className="p-4 border-b border-surface2 bg-surface2/20">
-                <h3 className="text-text2 font-bold tracking-widest uppercase text-xs flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                  Live Network Feed
-                </h3>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                {MOCK_LIVE_FEED.map((feed) => (
-                  <div key={feed.id} className="bg-bg/50 border border-surface2 rounded p-3 flex gap-4 items-start">
-                    <div className="text-accent text-[10px] mt-0.5">{feed.time}</div>
-                    <div className="text-text2 text-xs">{feed.text}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* All Teams Status */}
-            <div className="bg-surface border border-surface2 rounded-xl p-0 shadow-lg overflow-hidden flex flex-col h-[450px]">
-              <div className="p-4 border-b border-surface2 bg-surface2/20">
-                <h3 className="text-text2 font-bold tracking-widest uppercase text-xs flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  Active Agents
-                </h3>
-              </div>
-              <div className="flex-1 overflow-y-auto p-0">
-                <table className="w-full text-left text-xs">
-                  <thead className="text-text3 bg-bg/50 border-b border-surface2">
-                    <tr>
-                      <th className="font-medium p-4 tracking-widest">TEAM</th>
-                      <th className="font-medium p-4 tracking-widest">LEVEL</th>
-                      <th className="font-medium p-4 tracking-widest">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface2">
-                    {MOCK_ALL_TEAMS.map((team) => (
-                      <tr key={team.id} className="hover:bg-surface2/30 transition-colors">
-                        <td className="p-4">
-                          <div className="text-white font-bold">{team.name}</div>
-                          <div className="text-text3 text-[10px] mt-1">{team.id}</div>
-                        </td>
-                        <td className="p-4 text-accent font-bold">LVL {team.level}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 rounded text-[10px] tracking-widest uppercase font-bold border ${team.status === 'Active' ? 'border-accent/30 text-accent bg-accent/5' : 'border-amber/30 text-amber bg-amber/5'}`}>
-                            {team.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
           </div>
 
         </div>

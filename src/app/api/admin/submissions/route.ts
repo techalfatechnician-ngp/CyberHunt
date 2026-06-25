@@ -1,32 +1,39 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { db } from "@/lib/firebase/admin";
 
 export async function GET() {
   try {
-    // We would verify admin auth here, but skipping for demo speed
-    
-    // Fetch submissions that have proof images and haven't been processed yet
-    const { data: submissions, error } = await supabaseAdmin
-      .from("submissions")
-      .select(`
-        id,
-        level_id,
-        is_correct,
-        proof_image_url,
-        ai_status,
-        submitted_at,
-        team_id,
-        teams(team_name, ai_strikes)
-      `)
-      .neq("proof_image_url", null)
-      .order("submitted_at", { ascending: false })
-      .limit(50);
+    const submissionsSnapshot = await db
+      .collection("submissions")
+      .where("status", "==", "pending")
+      .get();
 
-    if (error) throw error;
+    const submissions = await Promise.all(
+      submissionsSnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        
+        // Fetch the associated team to get current strikes
+        const teamDoc = await db.collection("teams").doc(data.team_id).get();
+        const teamData = teamDoc.data() || {};
+        const ts = data.timestamp;
+        const date = ts?.toDate ? ts.toDate() : ts instanceof Date ? ts : new Date(ts || Date.now());
+
+        return {
+          id: doc.id,
+          team_id: data.team_id,
+          team_name: data.team_name,
+          level_id: data.level_id,
+          answer: data.answer,
+          proof_url: data.proof_url,
+          submitted_at: date.toISOString(),
+          ai_strikes: teamData.ai_strikes || 0
+        };
+      })
+    );
 
     return NextResponse.json({ submissions });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Admin submissions fetch error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

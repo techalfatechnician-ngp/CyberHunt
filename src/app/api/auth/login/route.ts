@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { db } from "@/lib/firebase/admin";
 import { signToken, COOKIE_NAME } from "@/lib/jwt";
 import type { AuthPayload } from "@/types";
 
@@ -15,16 +15,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: team, error } = await supabaseAdmin
-      .from("teams")
-      .select("*")
-      .eq("leader_email", email.toLowerCase().trim())
-      .eq("team_id", team_id.toUpperCase().trim())
-      .single();
+    const teamDocRef = db.collection("teams").doc(team_id.toUpperCase().trim());
+    const teamDoc = await teamDocRef.get();
 
-    if (error || !team) {
+    if (!teamDoc.exists) {
       return NextResponse.json(
-        { error: "Invalid email or Team ID" },
+        { error: "Invalid Team ID" },
+        { status: 401 }
+      );
+    }
+
+    const team = teamDoc.data()!;
+
+    if (team.leader_email.toLowerCase() !== email.toLowerCase().trim()) {
+      return NextResponse.json(
+        { error: "Invalid email for this Team ID" },
         { status: 401 }
       );
     }
@@ -45,18 +50,7 @@ export async function POST(request: NextRequest) {
 
     const token = await signToken(payload);
 
-    const { data: progressData } = await supabaseAdmin
-      .from("progress")
-      .select("level_id, solved_at")
-      .eq("team_id", team.team_id)
-      .order("level_id", { ascending: true });
-
-    let currentLevel = 1;
-    if (progressData) {
-      const solvedLevels = progressData.filter((p) => p.solved_at !== null);
-      currentLevel = solvedLevels.length + 1;
-      if (currentLevel > 10) currentLevel = 10;
-    }
+    const currentLevel = team.current_level || 1;
 
     const response = NextResponse.json({
       message: "Login successful",

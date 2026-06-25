@@ -1,22 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import Button from "@/components/ui/button";
 
 interface Submission {
   id: string;
-  level_id: number;
-  is_correct: boolean;
-  proof_image_url: string;
-  ai_status: string | null;
-  submitted_at: string;
   team_id: string;
-  teams: {
-    team_name: string;
-    ai_strikes: number;
-  };
+  team_name: string;
+  level_id: number;
+  answer: string;
+  proof_url: string;
+  submitted_at: string;
+  ai_strikes: number;
 }
 
 export default function AdminSubmissionsPage() {
@@ -25,7 +21,7 @@ export default function AdminSubmissionsPage() {
 
   useEffect(() => {
     fetchSubmissions();
-    const interval = setInterval(fetchSubmissions, 10000);
+    const interval = setInterval(fetchSubmissions, 10000); // refresh every 10s
     return () => clearInterval(interval);
   }, []);
 
@@ -43,100 +39,128 @@ export default function AdminSubmissionsPage() {
     }
   };
 
-  const handleStrike = async (submissionId: string, teamId: string) => {
-    if (!confirm("Are you sure you want to flag this for AI usage? The team will get a strike.")) return;
+  const handleAction = async (action: "approve" | "reject" | "strike", submissionId: string, teamId: string) => {
+    if (action === "strike" && !confirm("Are you sure you want to flag this for AI usage? The team will get a strike.")) return;
+    
+    // Optimistic UI update
+    setSubmissions(prev => prev.filter(s => s.id !== submissionId));
 
     try {
-      const res = await fetch("/api/admin/strike", {
+      const res = await fetch("/api/admin/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submission_id: submissionId, team_id: teamId })
+        body: JSON.stringify({ action, submission_id: submissionId, team_id: teamId })
       });
       
       const data = await res.json();
       if (data.success) {
-        if (data.disqualified) {
-          alert(`CRITICAL: Team has received their 4th strike and is DISQUALIFIED!`);
-        } else {
-          alert(`Strike applied! Team now has ${data.strikes}/4 strikes.`);
+        if (action === "strike") {
+          if (data.disqualified) {
+            alert(`CRITICAL: Team has received their 4th strike and is DISQUALIFIED!`);
+          } else {
+            alert(`Strike applied! Team now has ${data.strikes}/4 strikes.`);
+          }
         }
-        fetchSubmissions();
       }
     } catch (err) {
       console.error(err);
+      fetchSubmissions(); // revert optimistic update
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg text-accent font-mono animate-pulse">
-        Loading surveillance feed...
+        Loading Mission Control feed...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg p-6">
-      <header className="flex justify-between items-center mb-8 border-b border-border2 pb-4">
+    <div className="min-h-screen bg-bg bg-grid-pattern p-6">
+      <header className="flex justify-between items-center mb-8 border-b border-surface2 pb-4 bg-surface/80 backdrop-blur px-6 rounded-xl border">
         <div>
-          <h1 className="text-2xl font-display font-bold text-red tracking-widest uppercase mb-1">
-            <span className="text-white">&lt;</span> SURVEILLANCE FEED <span className="text-white">/&gt;</span>
+          <h1 className="text-2xl font-display font-bold text-accent tracking-widest uppercase mb-1 flex items-center gap-2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+            MISSION CONTROL
           </h1>
-          <p className="text-text3 font-mono text-xs">MONITORING ALL INCOMING FRAGMENT SUBMISSIONS</p>
+          <p className="text-text3 font-mono text-xs">MONITORING ALL INCOMING INTEL UPLOADS</p>
         </div>
-        <Link href="/admin" className="text-text3 hover:text-accent font-mono text-sm border border-border2 px-4 py-2 hover:border-accent rounded transition-colors">
-          Return to Command
-        </Link>
+        <div className="text-right">
+            <div className="text-white font-bold mb-1 tracking-widest text-sm uppercase">PENDING APPROVALS: {submissions.length}</div>
+            <Link href="/" className="text-text3 hover:text-accent font-mono text-xs border border-surface2 px-4 py-2 hover:border-accent rounded transition-colors uppercase tracking-widest">
+            Return to Base
+            </Link>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {submissions.map((sub) => (
-          <div key={sub.id} className="bg-surface border border-border2 rounded p-3 flex flex-col relative overflow-hidden group">
-            {sub.ai_status === 'flagged' && (
-              <div className="absolute inset-0 bg-red/10 border-2 border-red z-10 pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red font-display text-3xl font-bold opacity-30 transform -rotate-12 border-4 border-red px-4 py-1 uppercase tracking-widest">
-                  AI STRIKE
+          <div key={sub.id} className="bg-surface border border-surface2 rounded-xl p-4 flex flex-col shadow-lg">
+            
+            <div className="flex justify-between items-start mb-3 border-b border-surface2 pb-3">
+              <div>
+                <div className="text-accent font-mono font-bold text-sm truncate max-w-[150px]">{sub.team_name}</div>
+                <div className="text-text3 font-mono text-[10px] mt-1">
+                    LVL {sub.level_id} &middot; {new Date(sub.submitted_at).toLocaleTimeString()}
                 </div>
               </div>
-            )}
-            
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="text-accent font-mono font-bold text-sm truncate max-w-[150px]">{sub.teams?.team_name}</div>
-                <div className="text-text3 font-mono text-[10px]">Lvl {sub.level_id} &middot; {new Date(sub.submitted_at).toLocaleTimeString()}</div>
-              </div>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className={`w-2 h-2 rounded-full ${i <= (sub.teams?.ai_strikes || 0) ? 'bg-red shadow-[0_0_8px_#ff3c3c]' : 'bg-surface2 border border-border2'}`} />
+              <div className="flex gap-1" title={`${sub.ai_strikes}/3 AI Strikes`}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} className={`w-2 h-2 rounded-full ${i <= sub.ai_strikes ? 'bg-red shadow-[0_0_8px_#ff3c3c]' : 'bg-surface2 border border-surface2'}`} />
                 ))}
               </div>
             </div>
 
-            <div className="relative aspect-video w-full bg-surface2 rounded mb-4 overflow-hidden border border-border/50 group-hover:border-accent/50 transition-colors">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={sub.proof_image_url} 
-                alt={`Proof from ${sub.teams?.team_name}`}
-                className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity"
-              />
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-bg/80 to-transparent" />
+            <div className="mb-4">
+                <div className="text-text3 text-[10px] tracking-widest uppercase mb-1">Decrypted Flag:</div>
+                <div className="text-white font-mono bg-bg p-2 border border-surface2 rounded">{sub.answer}</div>
             </div>
 
-            <div className="mt-auto">
+            <div className="text-text3 text-[10px] tracking-widest uppercase mb-1">Uploaded Proof:</div>
+            <div className="relative aspect-video w-full bg-bg rounded mb-4 overflow-hidden border border-surface2">
+              <a href={sub.proof_url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={sub.proof_url} 
+                  alt={`Proof from ${sub.team_name}`}
+                  className="object-contain w-full h-full opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer"
+                />
+              </a>
+            </div>
+
+            <div className="mt-auto grid grid-cols-2 gap-2 mb-2">
               <Button 
-                variant="danger" 
-                className="w-full"
-                disabled={sub.ai_status === 'flagged'}
-                onClick={() => handleStrike(sub.id, sub.team_id)}
+                variant="primary" 
+                className="w-full text-xs py-2 bg-accent/20 text-accent border border-accent/50 hover:bg-accent hover:text-bg"
+                onClick={() => handleAction("approve", sub.id, sub.team_id)}
               >
-                ⚡ AI STRIKE
+                APPROVE
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full text-xs py-2 border border-surface2 hover:bg-surface2"
+                onClick={() => handleAction("reject", sub.id, sub.team_id)}
+              >
+                REJECT
               </Button>
             </div>
+            
+            <Button 
+                variant="danger" 
+                className="w-full text-xs py-2 mt-2 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white"
+                onClick={() => handleAction("strike", sub.id, sub.team_id)}
+            >
+                ⚡ AI STRIKE
+            </Button>
           </div>
         ))}
 
         {submissions.length === 0 && (
-          <div className="col-span-full py-12 text-center text-text3 font-mono border border-dashed border-border2 rounded">
+          <div className="col-span-full py-16 text-center text-text3 font-mono border border-dashed border-surface2 rounded-xl bg-surface/50">
+            <div className="text-accent mb-2">
+                <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
             NO INCOMING DATA STREAMS DETECTED
           </div>
         )}

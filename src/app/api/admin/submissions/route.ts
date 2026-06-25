@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const submissionsSnapshot = await db
       .collection("submissions")
-      .where("status", "==", "pending")
+      .orderBy("timestamp", "desc")
       .get();
 
     const submissions = await Promise.all(
@@ -25,6 +25,7 @@ export async function GET() {
           level_id: data.level_id,
           answer: data.answer,
           proof_url: data.proof_url,
+          status: data.status,
           submitted_at: date.toISOString(),
           ai_strikes: teamData.ai_strikes || 0
         };

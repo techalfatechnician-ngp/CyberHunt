@@ -43,7 +43,9 @@ export default function AdminSubmissionsPage() {
     if (action === "strike" && !confirm("Are you sure you want to flag this for AI usage? The team will get a strike.")) return;
     
     // Optimistic UI update
-    setSubmissions(prev => prev.filter(s => s.id !== submissionId));
+    setSubmissions(prev => prev.map(s => 
+      s.id === submissionId ? { ...s, status: action === 'strike' ? 'rejected_ai' : action === 'approve' ? 'approved' : 'rejected' } : s
+    ));
 
     try {
       const res = await fetch("/api/admin/action", {
@@ -117,7 +119,14 @@ export default function AdminSubmissionsPage() {
                 <div className="text-white font-mono bg-bg p-2 border border-surface2 rounded">{sub.answer}</div>
             </div>
 
-            <div className="text-text3 text-[10px] tracking-widest uppercase mb-1">Uploaded Proof:</div>
+            <div className="text-text3 text-[10px] tracking-widest uppercase mb-1 flex justify-between">
+              <span>Uploaded Proof:</span>
+              <span className={`font-bold ${
+                sub.status === 'pending' ? 'text-accent' : 
+                sub.status === 'approved' ? 'text-green-500' : 
+                'text-red'
+              }`}>{sub.status.toUpperCase()}</span>
+            </div>
             <div className="relative aspect-video w-full bg-bg rounded mb-4 overflow-hidden border border-surface2">
               <a href={sub.proof_url} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -129,30 +138,34 @@ export default function AdminSubmissionsPage() {
               </a>
             </div>
 
-            <div className="mt-auto grid grid-cols-2 gap-2 mb-2">
-              <Button 
-                variant="primary" 
-                className="w-full text-xs py-2 bg-accent/20 text-accent border border-accent/50 hover:bg-accent hover:text-bg"
-                onClick={() => handleAction("approve", sub.id, sub.team_id)}
-              >
-                APPROVE
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full text-xs py-2 border border-surface2 hover:bg-surface2"
-                onClick={() => handleAction("reject", sub.id, sub.team_id)}
-              >
-                REJECT
-              </Button>
-            </div>
-            
-            <Button 
-                variant="danger" 
-                className="w-full text-xs py-2 mt-2 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white"
-                onClick={() => handleAction("strike", sub.id, sub.team_id)}
-            >
-                ⚡ AI STRIKE
-            </Button>
+            {sub.status === "pending" && (
+              <>
+                <div className="mt-auto grid grid-cols-2 gap-2 mb-2">
+                  <Button 
+                    variant="primary" 
+                    className="w-full text-xs py-2 bg-accent/20 text-accent border border-accent/50 hover:bg-accent hover:text-bg"
+                    onClick={() => handleAction("approve", sub.id, sub.team_id)}
+                  >
+                    APPROVE
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-xs py-2 border border-surface2 hover:bg-surface2"
+                    onClick={() => handleAction("reject", sub.id, sub.team_id)}
+                  >
+                    REJECT
+                  </Button>
+                </div>
+                
+                <Button 
+                    variant="danger" 
+                    className="w-full text-xs py-2 mt-2 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white"
+                    onClick={() => handleAction("strike", sub.id, sub.team_id)}
+                >
+                    ⚡ AI STRIKE
+                </Button>
+              </  >
+            )}
           </div>
         ))}
 

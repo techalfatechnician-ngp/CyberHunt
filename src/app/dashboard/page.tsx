@@ -119,16 +119,16 @@ export default function DashboardPage() {
           if (json.success) {
             setSubmission("");
             setProofFile(null);
-            alert("Success! " + json.message);
+            alert(`✅ UPLOAD SUCCESSFUL!\n\nYour proof image was securely compressed and transmitted directly to Mission Control.\n\n${json.message}`);
           } else {
-            alert("Error: " + json.error);
+            alert("❌ TRANSMISSION ERROR: " + json.error);
           }
           setSubmitting(false);
         };
       };
     } catch (err) {
       console.error(err);
-      alert("Submission failed. Please try again.");
+      alert("❌ CRITICAL FAILURE: Submission failed to transmit. Please try again.");
       setSubmitting(false);
     }
   };
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
               </div>
               <h3 className="text-accent font-bold tracking-widest uppercase mb-4 text-xs">Execute Submission</h3>
-              <form onSubmit={handleSubmission} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div>
                   <input
                     type="text"

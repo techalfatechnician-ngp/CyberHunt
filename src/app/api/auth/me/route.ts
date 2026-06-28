@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,13 +10,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const teamDoc = await db.collection("teams").doc(user.team_id).get();
+    const { data: team, error } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("team_id", user.team_id)
+      .single();
     
-    if (!teamDoc.exists) {
+    if (error || !team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    const team = teamDoc.data()!;
     const currentLevel = team.current_level || 1;
 
     return NextResponse.json({

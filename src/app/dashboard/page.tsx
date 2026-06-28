@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Tv, Puzzle, Lock, Unlock } from "lucide-react";
+import { Tv, Puzzle, Lock, Unlock, Crosshair, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface DashboardData {
   team: {
@@ -21,6 +21,19 @@ interface DashboardData {
   total_levels: number;
 }
 
+const MISSIONS = [
+  { id: 1, title: "THE INITIAL BREACH", desc: "Your target is the TechAlfa public repository. Find the initial breach point and extract the embedded cipher key or flag.", link: "https://github.com/techalfatechnician-ngp/CyberHunt.git" },
+  { id: 2, title: "PHANTOM BRANCH", desc: "A hidden branch contains experimental code. Navigate through the commit history to uncover the hidden message.", link: "https://github.com/techalfatechnician-ngp/CyberHunt.git" },
+  { id: 3, title: "NETWORK SHADOWS", desc: "Inspect the network payloads. A specific request is transmitting encrypted data in the headers. Intercept it.", link: "#" },
+  { id: 4, title: "COOKIE JAR", desc: "The authentication system left a vulnerable trace in your browser cookies. Decode the session token.", link: "#" },
+  { id: 5, title: "BASE64 ANOMALY", desc: "We found a strange string in the server logs. It looks like standard Base64, but something is off. Decode it.", link: "#" },
+  { id: 6, title: "EXIF GHOST", desc: "Analyze the provided image file. The metadata contains GPS coordinates that point to your next clue.", link: "#" },
+  { id: 7, title: "INVISIBLE INK", desc: "The CSS on the target page hides a crucial element. Use your developer tools to reveal the hidden text.", link: "#" },
+  { id: 8, title: "ENGINEER'S TRIAL", desc: "Solve the 4 coding algorithms provided. Their outputs will form a valid TechAlfa LinkedIn URL containing the fragment.", link: "#" },
+  { id: 9, title: "RAINBOW BREACH", desc: "A database was leaked containing MD5 hashes. Use rainbow tables to decrypt the admin's password hash.", link: "#" },
+  { id: 10, title: "THE FINAL DECRYPTION", desc: "You have collected all fragments. Unscramble the letters to form the final Master Key and shut down the rogue AI.", link: "#" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -33,6 +46,8 @@ export default function DashboardPage() {
   const [hintWarning, setHintWarning] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [activeHintLink, setActiveHintLink] = useState<string | null>(null);
+  
+  const [selectedMission, setSelectedMission] = useState(1);
 
   const [timeLeft, setTimeLeft] = useState("90:00");
   const [isCritical, setIsCritical] = useState(false);
@@ -53,10 +68,15 @@ export default function DashboardPage() {
         return;
       }
       setData(json);
-      if (loading && json.team) {
+      if (json.team) {
         setFragments(json.team.fragments);
-        setLoading(false);
+        if (loading) {
+          // Auto-select lowest unsolved mission
+          const firstUnsolved = json.team.fragments.findIndex((f: string) => f === "") + 1;
+          setSelectedMission(firstUnsolved > 0 && firstUnsolved <= 9 ? firstUnsolved : 10);
+        }
       }
+      if (loading) setLoading(false);
     } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
     }
@@ -64,7 +84,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 10000);
+    const interval = setInterval(fetchDashboardData, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -90,6 +110,13 @@ export default function DashboardPage() {
 
     return () => clearInterval(interval);
   }, [data?.team?.startedAt]);
+  
+  useEffect(() => {
+    setSubmission("");
+    setProofFile(null);
+    setActiveHint(null);
+    setActiveHintLink(null);
+  }, [selectedMission]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +144,7 @@ export default function DashboardPage() {
           formData.append("action", "submit");
           formData.append("answer", submission);
           formData.append("proofBase64", base64Proof);
+          formData.append("level_id", selectedMission.toString());
 
           const res = await fetch("/api/dashboard/action", { method: "POST", body: formData });
           const json = await res.json();
@@ -124,6 +152,7 @@ export default function DashboardPage() {
             setSubmission("");
             setProofFile(null);
             alert(`✅ UPLOAD SUCCESSFUL!\n\nYour proof image was securely compressed and transmitted directly to Mission Control.\n\n${json.message}`);
+            fetchDashboardData();
           } else {
             alert("❌ TRANSMISSION ERROR: " + json.error);
           }
@@ -147,7 +176,7 @@ export default function DashboardPage() {
     try {
       const formData = new FormData();
       formData.append("action", "hint");
-      formData.append("hintId", data?.team.current_level.toString() || "1");
+      formData.append("level_id", selectedMission.toString());
       const res = await fetch("/api/dashboard/action", { method: "POST", body: formData });
       const json = await res.json();
       if (json.success) {
@@ -162,11 +191,6 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    setActiveHint(null);
-    setActiveHintLink(null);
-  }, [data?.team?.current_level]);
-
   if (loading || !data) {
     return (
       <div className="min-h-screen bg-bg0 flex items-center justify-center font-mono">
@@ -175,15 +199,15 @@ export default function DashboardPage() {
     );
   }
 
-  const { team, activeAgents, total_levels } = data;
+  const { team, activeAgents } = data;
+  const securedFragmentsCount = fragments.filter(f => f !== "").length;
+  const allFragmentsSecured = securedFragmentsCount === 9;
+  const isMission10Locked = !allFragmentsSecured;
 
   const hintsConfig = [
-    { id: 1, unlockMin: 10 },
-    { id: 2, unlockMin: 20 },
-    { id: 3, unlockMin: 30 },
-    { id: 4, unlockMin: 40 },
-    { id: 5, unlockMin: 50 },
-    { id: 6, unlockMin: 60 },
+    { id: 1, cost: "Free", unlockMin: 0 },
+    { id: 2, cost: "-200 PTS", unlockMin: 10 },
+    { id: 3, cost: "-200 PTS", unlockMin: 20 },
   ];
 
   if (team?.is_disqualified) {
@@ -204,331 +228,375 @@ export default function DashboardPage() {
     );
   }
 
-  if (team?.current_level > total_levels) {
-    return (
-      <div className="min-h-screen bg-bg0 flex flex-col items-center justify-center font-mono p-6">
-        <div className="bg-[var(--color-neon)]/10 border-2 border-[var(--color-neon)] rounded-xl p-12 max-w-2xl w-full text-center shadow-[0_0_50px_rgba(0,255,136,0.2)]">
-          <div className="text-6xl mb-6">🏆</div>
-          <h1 className="text-4xl font-orb font-bold text-[var(--color-neon)] tracking-widest mb-4 drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]">MISSION ACCOMPLISHED</h1>
-          <h2 className="text-xl text-white mb-6 uppercase tracking-widest">All Fragments Secured</h2>
-          <div className="bg-bg1 border border-[var(--color-border-g2)] p-6 rounded mb-8">
-            <div className="text-[var(--color-text2)] text-xs mb-2 tracking-widest uppercase">Decrypted Flag</div>
-            <div className="text-3xl text-white font-bold tracking-widest">{team.fragments.join("")}</div>
-          </div>
-          <p className="text-[var(--color-text2)] mb-8">
-            Excellent work, Agent. You have successfully recovered all Intel and completed Operation Vault. Your final time and score have been recorded.
-          </p>
-          <button onClick={() => router.push("/leaderboard")} className="bg-[var(--color-neon)]/20 text-[var(--color-neon)] border border-[var(--color-neon)] hover:bg-[var(--color-neon)] hover:text-black px-8 py-3 rounded tracking-widest uppercase transition-colors">
-            View Global Rankings
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const securedFragmentsCount = fragments.filter(f => f !== "").length;
-  const progressPercent = Math.round((team.current_level / total_levels) * 100);
+  const currentMissionObj = MISSIONS.find(m => m.id === selectedMission) || MISSIONS[0];
+  const isCurrentMissionSolved = selectedMission < 10 ? fragments[selectedMission - 1] !== "" : false;
 
   return (
-    <div className="min-h-screen bg-bg0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(0,255,136,0.05)_0%,transparent_60%)] flex flex-col">
+    <div className="min-h-screen bg-bg0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(0,255,136,0.05)_0%,transparent_60%)] flex flex-col overflow-hidden">
       
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-6 h-12 bg-bg1 border-b border-border-g2 shrink-0">
+      <div className="flex items-center justify-between px-6 h-[52px] bg-bg1 border-b border-border-g2 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-neon animate-pulse"></div>
-          <span className="font-orb text-[13px] font-bold tracking-[3px] text-neon">OPERATION VAULT</span>
+          <span className="font-orb text-[14px] font-bold tracking-[3px] text-neon">OPERATION VAULT</span>
         </div>
+        
+        {/* CENTER STAT BAR */}
+        <div className="flex items-center gap-5 font-mono text-[11px] text-text2 tracking-[2px]">
+          <span>HINTS USED <span className="text-white font-bold">{team?.hints_used || 0}</span></span>
+          <span className="text-border-g2">|</span>
+          <span>AI STRIKES <span className="text-amber font-bold">{team?.ai_strikes || 0}/3</span></span>
+          <span className="text-border-g2">|</span>
+          <span className={`font-orb text-[20px] font-bold ${isCritical ? 'text-red animate-blink' : isWarning ? 'text-amber' : 'text-neon'}`}>
+            {timeLeft}
+          </span>
+          <span className="text-border-g2">|</span>
+          <span>MISSION <span className="text-white font-bold">{selectedMission}/10</span></span>
+          <span className="text-border-g2">|</span>
+          <span>FRAGMENTS <span className="text-white font-bold">{securedFragmentsCount}/9</span></span>
+        </div>
+
         <div className="flex items-center gap-5 font-mono text-[11px]">
           <span className="text-text2">AGENT:</span>
           <span className="text-neon font-bold tracking-[2px]">{team?.name || "UNKNOWN"}</span>
           <button 
             onClick={() => router.push("/")}
-            className="border border-red text-red px-3 py-[3px] font-orb text-[10px] tracking-[2px] uppercase transition-colors hover:bg-red hover:text-black"
+            className="border border-red text-red px-4 py-[6px] font-orb text-[10px] tracking-[2px] uppercase transition-colors hover:bg-red hover:text-black"
           >
             DISCONNECT
           </button>
         </div>
       </div>
-
-      {/* TIMER HERO */}
-      <div className="bg-bg1 border-b border-border-g2 pt-5 pb-[18px] px-6 flex items-center justify-center gap-20 relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/5 h-px bg-neon shadow-[0_0_12px_rgba(0,255,136,1)]"></div>
-        
-        <div className="flex gap-10">
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-neon">{team?.hints_used || 0}</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">HINTS USED</div>
+      
+      {/* STRIKES BAR */}
+      <div className="bg-bg0 border-b border-border-g2 h-8 flex items-center justify-between px-6 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            {[1, 2, 3].map(strike => (
+              <div key={strike} className={`w-2.5 h-2.5 rounded-full border border-red ${strike <= (team?.ai_strikes || 0) ? 'bg-red shadow-[0_0_8px_rgba(255,51,51,0.8)]' : 'bg-transparent'}`}></div>
+            ))}
           </div>
-          <div className="w-px h-[60px] bg-border-g2"></div>
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-amber">{team?.ai_strikes || 0}</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">AI STRIKES</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-red">/ 3</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">MAX STRIKES</div>
-          </div>
+          <span className="font-mono text-[10px] text-red tracking-[2px] uppercase">
+            {(team?.ai_strikes || 0) > 0 ? `${team?.ai_strikes} STRIKE${team?.ai_strikes > 1 ? 'S' : ''} RECORDED` : 'STATUS: CLEAR'}
+          </span>
         </div>
-
-        <div className="w-px h-[60px] bg-border-g2"></div>
-
-        <div className="text-center">
-          <div className={`font-mono text-[72px] font-bold tracking-[4px] leading-none drop-shadow-[0_0_20px_rgba(0,255,136,0.6)] ${isCritical ? 'text-red drop-shadow-[0_0_20px_rgba(255,51,51,0.6)] animate-blink' : isWarning ? 'text-amber drop-shadow-[0_0_20px_rgba(255,170,0,0.6)]' : 'text-neon'}`}>
-            {timeLeft}
-          </div>
-          <div className="font-orb text-[9px] tracking-[4px] text-text2 mt-1">TIME REMAINING</div>
-        </div>
-
-        <div className="w-px h-[60px] bg-border-g2"></div>
-
-        <div className="flex gap-10">
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-neon">{team?.current_level || 1}</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">MISSION</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-text2">/ {total_levels}</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">TOTAL</div>
-          </div>
-          <div className="w-px h-[60px] bg-border-g2"></div>
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-neon">{securedFragmentsCount}</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">FRAGS</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-[32px] font-bold leading-none text-text2">/ 9</div>
-            <div className="font-orb text-[8px] tracking-[3px] text-text2 mt-1">SECURED</div>
-          </div>
-        </div>
+        <span className="font-mono text-[9px] text-text2 tracking-[2px] uppercase">3 strikes = disqualification</span>
       </div>
 
       {/* MAIN 3-COL GRID */}
-      <div className="grid grid-cols-[280px_1fr_280px] min-h-0 flex-1 overflow-hidden">
+      <div className="grid grid-cols-[260px_1fr_260px] min-h-0 flex-1 overflow-hidden">
         
-        {/* LEFT: LIVE SCOREBOARD */}
+        {/* LEFT COLUMN */}
         <div className="bg-bg1 border-r border-border-g2 flex flex-col overflow-hidden">
-          <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center gap-2 shrink-0">
-            <Tv size={14} className="text-neon" />
-            <span className="font-orb text-[9px] tracking-[3px] text-neon uppercase">LIVE SCOREBOARD</span>
+          {/* MISSION SELECT */}
+          <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <Crosshair size={14} className="text-neon" />
+              <span className="font-orb text-[10px] font-bold tracking-[3px] text-white uppercase">MISSION SELECT</span>
+            </div>
           </div>
           
-          <div className="grid grid-cols-[1fr_60px_70px] p-[8px_18px] font-orb text-[8px] tracking-[2px] text-text2 border-b border-border-g shrink-0">
-            <div>TEAM</div>
-            <div className="text-center">RANK</div>
-            <div className="text-right">SCORE</div>
+          <div className="p-[16px_18px] grid grid-cols-2 gap-3 border-b border-border-g2 shrink-0 bg-bg0">
+            {MISSIONS.map((m) => {
+              const isActive = m.id === selectedMission;
+              const isLocked = m.id === 10 && isMission10Locked;
+              const isSolved = m.id < 10 && fragments[m.id - 1] !== "";
+              
+              let boxStyle = "border-border-g2 text-text2 hover:border-neon hover:text-white cursor-pointer bg-bg2";
+              let numberColor = "text-text2";
+              let extraIcon = null;
+
+              if (isActive) {
+                boxStyle = "border-neon text-neon bg-[rgba(0,255,136,0.1)] cursor-default shadow-[0_0_10px_rgba(0,255,136,0.2)]";
+                numberColor = "text-neon";
+              } else if (isSolved) {
+                boxStyle = "border-[rgba(0,255,136,0.3)] text-[rgba(0,255,136,0.5)] bg-[rgba(0,255,136,0.05)] cursor-pointer hover:border-neon";
+                numberColor = "text-[rgba(0,255,136,0.5)]";
+                extraIcon = <CheckCircle2 size={12} className="absolute top-1.5 right-1.5 text-[rgba(0,255,136,0.5)]" />;
+              } else if (isLocked) {
+                boxStyle = "border-[rgba(255,51,51,0.3)] text-[rgba(255,51,51,0.5)] bg-[rgba(255,51,51,0.05)] cursor-not-allowed";
+                numberColor = "text-[rgba(255,51,51,0.5)]";
+                extraIcon = <Lock size={12} className="absolute top-1.5 right-1.5 text-[rgba(255,51,51,0.5)]" />;
+              }
+
+              return (
+                <div 
+                  key={m.id}
+                  onClick={() => {
+                    if (isLocked) {
+                      alert("⚠️ FINAL MISSION LOCKED. Secure all 9 fragments first.");
+                      return;
+                    }
+                    setSelectedMission(m.id);
+                  }}
+                  className={`relative aspect-[2/1] border flex items-center justify-center transition-all ${boxStyle}`}
+                >
+                  <span className={`font-orb text-[18px] font-bold ${numberColor}`}>
+                    {m.id.toString().padStart(2, '0')}
+                  </span>
+                  {extraIcon}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          {/* LIVE SCOREBOARD */}
+          <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center gap-2 shrink-0 bg-bg1">
+            <Tv size={14} className="text-neon" />
+            <span className="font-orb text-[10px] font-bold tracking-[3px] text-white uppercase">LIVE SCOREBOARD</span>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto bg-bg0">
             {!activeAgents || activeAgents.length === 0 ? (
-              <div className="p-4 text-center text-text2 text-xs">No agents active.</div>
+              <div className="p-4 text-center text-text2 text-xs font-mono tracking-widest">NO SIGNALS DETECTED</div>
             ) : (
               activeAgents.map((agent: any, i: number) => {
                 const isSelf = agent.id === team.id;
                 const pips = Array.from({ length: 10 });
                 return (
-                  <div key={agent.id} className={`grid grid-cols-[1fr_60px_70px] p-[10px_18px] border-b border-border-g items-center hover:bg-bg2 transition-colors cursor-pointer ${isSelf ? 'bg-[rgba(0,255,136,0.05)]' : ''}`}>
-                    <div className="overflow-hidden">
-                      <div className={`font-raj text-[13px] font-semibold tracking-[1px] truncate ${isSelf ? 'text-neon' : i === 0 ? 'text-amber' : 'text-text'}`}>
-                        {agent.name}
-                      </div>
-                      <div className="flex gap-[3px] mt-[3px]">
-                        {pips.map((_, idx) => (
-                          <div 
-                            key={idx} 
-                            className={`w-[6px] h-[6px] rounded-[1px] ${idx < agent.level ? (i === 0 ? 'bg-amber' : 'bg-neon') : 'bg-border-g2'}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <div className={`font-mono text-[10px] w-[22px] h-[22px] rounded-[2px] flex items-center justify-center 
+                  <div key={agent.id} className={`p-[10px_14px] border-b border-border-g flex items-center justify-between hover:bg-bg2 transition-colors cursor-pointer ${isSelf ? 'bg-[rgba(0,255,136,0.05)] border-l-2 border-l-neon' : ''}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`font-mono text-[10px] w-5 h-5 rounded-[2px] flex items-center justify-center font-bold
                         ${i === 0 ? 'bg-[#ffaa0022] text-amber border border-[#ffaa0044]' : 
                           i === 1 ? 'bg-[#c0c0c022] text-[#c0c0c0] border border-[#c0c0c044]' : 
                           i === 2 ? 'bg-[#cd7f3222] text-[#cd7f32] border border-[#cd7f3244]' : 
                           'bg-bg3 text-text2'}`}>
                         {i + 1}
                       </div>
+                      <div className="overflow-hidden">
+                        <div className={`font-raj text-[13px] font-bold tracking-[1px] truncate max-w-[120px] ${isSelf ? 'text-neon' : i === 0 ? 'text-amber' : 'text-text'}`}>
+                          {agent.name}
+                        </div>
+                        <div className="flex gap-[2px] mt-[3px]">
+                          {pips.map((_, idx) => (
+                            <div 
+                              key={idx} 
+                              className={`w-[5px] h-[5px] rounded-sm ${idx < agent.level ? (i === 0 ? 'bg-amber' : 'bg-neon') : 'bg-border-g2'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`font-mono text-[13px] text-right ${isSelf || i === 0 ? 'text-amber' : 'text-neon'}`}>
-                      {agent.level} / 10
+                    <div className={`font-mono text-[11px] font-bold ${isSelf || i === 0 ? 'text-amber' : 'text-neon'}`}>
+                      {agent.level}/10
                     </div>
                   </div>
                 );
               })
             )}
           </div>
-          
-          <div className="p-[12px_18px] border-t border-border-g shrink-0 mt-auto">
-            <div className="flex justify-between font-mono text-[10px] text-text2 mb-[6px]">
-              <span>YOUR PROGRESS</span>
-              <span className="text-neon">{progressPercent}%</span>
-            </div>
-            <div className="h-[3px] bg-bg3">
-              <div className="h-full bg-neon transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
-            </div>
-          </div>
         </div>
 
-        {/* CENTER: MISSION */}
-        <div className="bg-bg0 p-5 flex flex-col gap-4 overflow-y-auto">
+        {/* CENTER COLUMN: MISSION CONTROL */}
+        <div className="bg-bg0 p-6 flex flex-col gap-6 overflow-y-auto relative">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px)] bg-[length:100%_4px] pointer-events-none opacity-50"></div>
           
-          <div className="flex justify-between items-center pb-[14px] border-b border-border-g2">
-            <div className="flex items-baseline gap-2.5">
-              <div className="font-orb text-[18px] font-black text-white tracking-[2px]">
-                MISSION <span className="text-neon">{team?.current_level || 1}</span>
-              </div>
-              <div className="font-mono text-[12px] text-text2">OF {total_levels}</div>
-            </div>
-            <div className="font-orb text-[9px] tracking-[3px] p-[5px_14px] border border-neon text-neon bg-[rgba(0,255,136,0.06)]">
-              ● ACTIVE
-            </div>
-          </div>
-
-          <div className="bg-bg2 border border-border-g2 border-l-4 border-l-neon p-[16px_20px]">
-            <div className="font-orb text-[13px] font-bold text-neon tracking-[3px] mb-2.5">THE GAME BEGINS</div>
-            <div className="font-raj text-[14px] leading-[1.6] text-text font-medium">
-              Your target is the TechAlfa public repository. Find the initial breach point and extract the embedded cipher key or flag. You must submit your proof image.
-            </div>
-            <a href="https://github.com/techalfatechnician-ngp/CyberHunt.git" target="_blank" className="inline-block mt-3 font-mono text-[12px] text-neon no-underline border-b border-[#00ff8844] pb-px tracking-[0.5px] transition-colors hover:border-neon flex items-center">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
-              HTTPS://GITHUB.COM/TECHALFATECHNICIAN-NGP/CYBERHUNT.GIT
-            </a>
-          </div>
-
-          <div className="font-orb text-[9px] tracking-[4px] text-text2 text-center p-[4px_0] mt-2">
-            ─── ENCRYPTED INTEL VAULT ───
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-            {hintsConfig.map((hint) => {
-              const isLocked = elapsedMinutes < hint.unlockMin;
-              return (
-                <div 
-                  key={hint.id}
-                  onClick={() => !isLocked && handleHintClick(hint.id)}
-                  className={`border p-[14px_16px] text-center relative transition-all duration-200
-                    ${isLocked 
-                      ? 'bg-bg2 border-border-g cursor-not-allowed opacity-60 hover:bg-bg3' 
-                      : 'bg-[#ffaa0010] border-amber cursor-pointer hover:bg-[#ffaa0020]'}`}
-                >
-                  {isLocked ? <Lock size={12} className="absolute top-2 right-2 text-text2 opacity-30" /> : <Unlock size={12} className="absolute top-2 right-2 text-amber" />}
-                  <div className={`font-orb text-[11px] font-bold tracking-[3px] mb-1 ${isLocked ? 'text-text2' : 'text-amber'}`}>
-                    HINT {hint.id}
-                  </div>
-                  <div className={`font-mono text-[10px] ${isLocked ? 'text-text2 opacity-50' : 'text-[#ffaa0099]'}`}>
-                    {isLocked ? `UNLOCKS IN ${hint.unlockMin - elapsedMinutes}M` : 'READY TO DECRYPT'}
-                  </div>
+          <div className="relative z-10 flex flex-col gap-6 h-full">
+            <div className="flex justify-between items-center pb-[14px] border-b border-border-g2">
+              <div className="flex items-baseline gap-3">
+                <div className="font-orb text-[24px] font-black text-white tracking-[2px]">
+                  MISSION <span className="text-neon">{selectedMission}</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {hintWarning && !activeHint && (
-            <div className="bg-[#ffaa0010] border border-amber p-4 mt-2">
-              <h4 className="font-orb text-[11px] text-amber font-bold mb-2 tracking-[2px]">WARNING: SCORE PENALTY</h4>
-              <p className="text-text2 text-xs mb-4 font-raj">Decrypting this hint will permanently reduce your final score. Are you sure you want to proceed?</p>
-              <div className="flex gap-3">
-                <button onClick={confirmHint} className="bg-amber text-black px-4 py-2 text-[10px] font-orb font-bold tracking-[2px] hover:bg-[#ffbb33]">CONFIRM</button>
-                <button onClick={() => setHintWarning(false)} className="border border-border-g2 text-text2 hover:text-white px-4 py-2 text-[10px] font-orb font-bold tracking-[2px]">CANCEL</button>
+                <div className="font-mono text-[14px] text-text2">OF 10</div>
+              </div>
+              <div className="font-orb text-[10px] font-bold tracking-[3px] p-[6px_16px] border border-neon text-neon bg-[rgba(0,255,136,0.08)] shadow-[0_0_10px_rgba(0,255,136,0.2)]">
+                ● ACTIVE
               </div>
             </div>
-          )}
 
-          {activeHint && (
-            <div className="bg-[rgba(0,255,136,0.1)] border border-neon p-6 w-full flex flex-col items-center text-center mt-2">
-              <h4 className="font-orb text-[11px] text-neon font-bold mb-4 tracking-[3px]">DECRYPTED INTEL:</h4>
-              <p className="text-white text-base mb-6 leading-relaxed font-raj">{activeHint}</p>
-              {activeHintLink && (
-                <a 
-                  href={activeHintLink} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-neon text-black px-6 py-2.5 font-orb font-bold tracking-[2px] text-[10px] hover:bg-[#00ffaa] hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all"
-                >
-                  FOLLOW LEAD
-                </a>
+            {/* MISSION DESCRIPTION BOX */}
+            <div className="bg-bg2 border border-border-g2 border-l-4 border-l-neon p-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+              <div className="font-orb text-[16px] font-bold text-neon tracking-[3px] mb-4 uppercase">{currentMissionObj.title}</div>
+              <div className="font-raj text-[16px] leading-[1.7] text-text font-medium mb-6">
+                {currentMissionObj.desc}
+              </div>
+              <a href={currentMissionObj.link} target="_blank" className="inline-flex items-center gap-2 font-mono text-[13px] text-[#00d4ff] no-underline border-b border-[#00d4ff44] pb-1 tracking-[1px] transition-colors hover:border-[#00d4ff] hover:text-[#00ffff]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                {currentMissionObj.link.toUpperCase()}
+              </a>
+            </div>
+
+            {/* ENCRYPTED INTEL VAULT */}
+            <div className="font-orb text-[10px] font-bold tracking-[6px] text-text2 text-center p-[8px_0] mt-2 relative">
+              <div className="absolute top-1/2 left-0 right-0 h-px bg-border-g2 -z-10"></div>
+              <span className="bg-bg0 px-4">— ENCRYPTED INTEL VAULT —</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              {hintsConfig.map((hint) => {
+                const isLocked = elapsedMinutes < hint.unlockMin;
+                const isFree = hint.cost === "Free";
+                return (
+                  <div 
+                    key={hint.id}
+                    onClick={() => !isLocked && handleHintClick(hint.id)}
+                    className={`border p-[16px_12px] text-center relative transition-all duration-200 flex flex-col items-center justify-center min-h-[100px]
+                      ${isLocked 
+                        ? 'bg-bg2 border-border-g cursor-not-allowed opacity-50' 
+                        : isFree ? 'bg-[#00d4ff10] border-[#00d4ff] cursor-pointer hover:bg-[#00d4ff20]' : 'bg-[#ffaa0010] border-amber cursor-pointer hover:bg-[#ffaa0020]'}`}
+                  >
+                    {isLocked ? <Lock size={14} className="absolute top-2 right-2 text-text2 opacity-30" /> : <Unlock size={14} className={`absolute top-2 right-2 ${isFree ? 'text-[#00d4ff]' : 'text-amber'}`} />}
+                    <div className={`font-orb text-[12px] font-bold tracking-[3px] mb-2 ${isLocked ? 'text-text2' : isFree ? 'text-[#00d4ff]' : 'text-amber'}`}>
+                      HINT {hint.id}
+                    </div>
+                    <div className={`font-mono text-[10px] mb-3 ${isLocked ? 'text-text2' : 'text-text opacity-80'}`}>
+                      {isLocked ? `UNLOCKS IN ${hint.unlockMin - elapsedMinutes}M` : 'Click to decrypt...'}
+                    </div>
+                    <div className={`font-mono text-[9px] font-bold tracking-[2px] p-[2px_8px] border rounded-sm
+                      ${isLocked ? 'border-border-g2 text-text2' : isFree ? 'border-[#00d4ff] text-[#00d4ff]' : 'border-amber text-amber'}`}>
+                      {hint.cost}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hintWarning && !activeHint && (
+              <div className="bg-[#ffaa0010] border border-amber p-4 mt-2">
+                <h4 className="font-orb text-[11px] text-amber font-bold mb-2 tracking-[2px]">WARNING: SCORE PENALTY</h4>
+                <p className="text-text2 text-xs mb-4 font-raj">Decrypting this hint will permanently reduce your final score. Are you sure you want to proceed?</p>
+                <div className="flex gap-3">
+                  <button onClick={confirmHint} className="bg-amber text-black px-4 py-2 text-[10px] font-orb font-bold tracking-[2px] hover:bg-[#ffbb33]">CONFIRM</button>
+                  <button onClick={() => setHintWarning(false)} className="border border-border-g2 text-text2 hover:text-white px-4 py-2 text-[10px] font-orb font-bold tracking-[2px]">CANCEL</button>
+                </div>
+              </div>
+            )}
+
+            {activeHint && (
+              <div className="bg-[rgba(0,255,136,0.1)] border border-neon p-6 w-full flex flex-col items-center text-center mt-2">
+                <h4 className="font-orb text-[11px] text-neon font-bold mb-4 tracking-[3px]">DECRYPTED INTEL:</h4>
+                <p className="text-white text-[15px] mb-6 leading-relaxed font-raj">{activeHint}</p>
+                {activeHintLink && (
+                  <a 
+                    href={activeHintLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="bg-neon text-black px-6 py-2.5 font-orb font-bold tracking-[2px] text-[10px] hover:bg-[#00ffaa] hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all"
+                  >
+                    FOLLOW LEAD
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* TRANSMIT SOLUTION */}
+            <div className="mt-auto pt-4">
+              <div className="font-orb text-[10px] font-bold tracking-[6px] text-text2 text-center p-[8px_0] mb-4 relative">
+                <div className="absolute top-1/2 left-0 right-0 h-px bg-border-g2 -z-10"></div>
+                <span className="bg-bg0 px-4">— TRANSMIT SOLUTION —</span>
+              </div>
+              
+              {isCurrentMissionSolved ? (
+                <div className="bg-[rgba(0,255,136,0.05)] border border-[rgba(0,255,136,0.3)] p-4 text-center">
+                  <div className="font-orb text-[12px] text-neon font-bold tracking-[3px] mb-1">✅ MISSION SOLVED</div>
+                  <div className="font-mono text-[10px] text-text2 tracking-[1px]">Fragment has been successfully secured for this sector.</div>
+                </div>
+              ) : (
+                <>
+                  <form onSubmit={handleSubmit} className="flex gap-3 items-stretch bg-bg2 p-4 border border-border-g2 shadow-lg">
+                    <input
+                      type="text"
+                      value={submission}
+                      onChange={(e) => setSubmission(e.target.value)}
+                      required
+                      maxLength={selectedMission === 10 ? 20 : 1}
+                      placeholder={selectedMission === 10 ? "ENTER MASTER KEY..." : "ENTER SECURED FRAGMENT (1 LETTER)..."}
+                      className="flex-1 bg-bg3 border border-border-g2 text-neon font-mono text-[16px] font-bold p-[12px_16px] outline-none tracking-[2px] placeholder:text-text2 placeholder:opacity-50 focus:border-neon transition-colors uppercase"
+                    />
+                    <div className="relative flex items-center justify-center border border-dashed border-border-g2 bg-bg3 px-5 hover:border-neon transition-colors group cursor-pointer overflow-hidden min-w-[160px]">
+                      <input 
+                        type="file" 
+                        required 
+                        accept="image/png, image/jpeg"
+                        onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                      />
+                      <div className="flex flex-col items-center justify-center z-0 pointer-events-none">
+                        <span className="font-orb text-[10px] font-bold tracking-[2px] text-text2 group-hover:text-white transition-colors">
+                          {proofFile ? proofFile.name.substring(0, 15) + (proofFile.name.length > 15 ? '...' : '') : 'UPLOAD PROOF'}
+                        </span>
+                        <span className="font-mono text-[9px] text-text2 opacity-60 mt-1">{proofFile ? 'READY' : 'JPG / PNG'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="bg-neon text-black border-none font-orb text-[12px] font-bold tracking-[3px] p-[0_24px] cursor-pointer transition-colors hover:bg-[#00ffaa] hover:shadow-[0_0_15px_rgba(0,255,136,0.4)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {submitting ? "TRANSMITTING..." : "SUBMIT"}
+                    </button>
+                  </form>
+                  <div className="mt-3 flex items-center justify-center gap-1.5 text-amber">
+                    <AlertTriangle size={12} />
+                    <span className="font-mono text-[10px] tracking-[1px] uppercase">1 submission per mission — choose carefully</span>
+                  </div>
+                </>
               )}
             </div>
-          )}
-
-          <div className="mt-auto pt-4">
-            <div className="font-orb text-[9px] tracking-[4px] text-text2 text-center p-[4px_0] mb-2">
-              ─── TRANSMIT SOLUTION ───
-            </div>
-            <form onSubmit={handleSubmit} className="flex gap-2.5 items-stretch bg-bg2 p-3 border border-border-g2">
-              <input
-                type="text"
-                value={submission}
-                onChange={(e) => setSubmission(e.target.value)}
-                required
-                placeholder="ENTER SECURED FRAGMENT..."
-                className="flex-1 bg-bg3 border border-border-g2 text-neon font-mono text-[14px] p-[10px_16px] outline-none tracking-[1px] placeholder:text-text2 placeholder:opacity-50 focus:border-neon transition-colors uppercase"
-              />
-              <div className="relative flex items-center justify-center border border-dashed border-border-g2 bg-bg3 px-4 hover:border-neon transition-colors group cursor-pointer overflow-hidden min-w-[140px]">
-                <input 
-                  type="file" 
-                  required 
-                  accept="image/png, image/jpeg"
-                  onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)}
-                  className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                />
-                <div className="flex flex-col items-center justify-center z-0 pointer-events-none">
-                  <span className="font-orb text-[9px] tracking-[2px] text-text2 group-hover:text-white transition-colors">
-                    {proofFile ? proofFile.name.substring(0, 15) + (proofFile.name.length > 15 ? '...' : '') : 'UPLOAD PROOF'}
-                  </span>
-                  <span className="font-mono text-[8px] text-text2 opacity-50 mt-1">{proofFile ? 'READY' : 'JPG / PNG'}</span>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-neon text-black border-none font-orb text-[10px] font-bold tracking-[2px] p-[0_20px] cursor-pointer transition-colors hover:bg-[#00ffaa] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                {submitting ? "TRANSMITTING..." : "SUBMIT"}
-              </button>
-            </form>
           </div>
         </div>
 
-        {/* RIGHT: FRAGMENTS */}
+        {/* RIGHT COLUMN */}
         <div className="bg-bg1 border-l border-border-g2 flex flex-col overflow-hidden">
           <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center gap-2 shrink-0">
             <Puzzle size={14} className="text-neon" />
-            <span className="font-orb text-[9px] tracking-[3px] text-neon uppercase">SECURED FRAGMENTS</span>
+            <span className="font-orb text-[10px] font-bold tracking-[3px] text-white uppercase">SECURED FRAGMENTS</span>
           </div>
           
-          <div className="p-[10px_18px_6px] flex items-center justify-between shrink-0">
-            <span className="font-orb text-[8px] tracking-[2px] text-text2">VAULT KEYS</span>
-            <span className="font-mono text-[11px] text-neon">{securedFragmentsCount} / 9</span>
+          <div className="p-[16px_18px_10px] flex items-center justify-between shrink-0">
+            <span className="font-orb text-[9px] font-bold tracking-[2px] text-text2">VAULT KEYS</span>
+            <span className="font-mono text-[12px] font-bold text-neon">{securedFragmentsCount} / 9</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 p-[0_16px_16px] shrink-0">
+          {/* 3x3 GRID */}
+          <div className="grid grid-cols-3 gap-2 p-[0_18px_20px] shrink-0 border-b border-border-g2">
             {fragments.map((frag, idx) => {
               const isSecured = frag !== "";
               return (
-                <div key={idx} className={`aspect-square bg-bg2 border flex flex-col items-center justify-center relative transition-all duration-200 cursor-default ${isSecured ? 'border-neon bg-[rgba(0,255,136,0.05)]' : 'border-border-g'}`}>
-                  <span className="absolute top-[5px] left-[7px] font-mono text-[8px] text-text2 opacity-60">L{idx + 1}</span>
+                <div key={idx} className={`aspect-square bg-bg2 border flex flex-col items-center justify-center relative transition-all duration-200 cursor-default ${isSecured ? 'border-neon bg-[rgba(0,255,136,0.08)] shadow-[inset_0_0_15px_rgba(0,255,136,0.15)]' : 'border-border-g2'}`}>
+                  <span className="absolute top-1 left-1.5 font-mono text-[9px] text-text2 opacity-60">L{idx + 1}</span>
                   {!isSecured ? (
-                    <span className="font-mono text-[18px] text-border-g2">?</span>
+                    <span className="font-mono text-[20px] text-border-g2">?</span>
                   ) : (
-                    <Unlock size={20} className="text-neon" />
+                    <span className="font-mono text-[24px] font-bold text-neon">{frag}</span>
                   )}
                 </div>
               );
             })}
           </div>
-
-          <div className="p-[0_16px_10px] flex-1 overflow-y-auto">
-            <div className="font-mono text-[9px] text-text2 tracking-[2px] mb-2">FRAGMENT STATUS</div>
-            <div className="grid gap-[5px]">
+          
+          {/* FRAGMENT STATUS LIST */}
+          <div className="p-[16px_18px] flex-1 overflow-y-auto border-b border-border-g2 bg-bg0">
+            <div className="grid gap-[6px]">
               {fragments.map((frag, idx) => {
                 const isSecured = frag !== "";
                 return (
-                  <div key={idx} className="flex items-center justify-between py-1 border-b border-[#00ff8811]">
-                    <span className={`font-mono text-[10px] ${isSecured ? 'text-neon' : 'text-text2'}`}>L{idx + 1}</span>
-                    <span className={`font-mono text-[9px] ${isSecured ? 'text-neon' : 'text-text2 opacity-40'}`}>
+                  <div key={idx} className="flex items-center justify-between py-1.5 border-b border-[#00ff8811]">
+                    <span className={`font-mono text-[11px] font-bold ${isSecured ? 'text-neon' : 'text-text2'}`}>L{idx + 1}</span>
+                    <span className={`font-mono text-[10px] tracking-[1px] ${isSecured ? 'text-neon' : 'text-text2 opacity-50'}`}>
                       {isSecured ? '● SECURED' : '○ PENDING'}
                     </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* DECODED WORD */}
+          <div className="p-[14px_18px] shrink-0 bg-bg1">
+            <div className="font-orb text-[9px] font-bold tracking-[3px] text-text2 mb-3">DECODED WORD</div>
+            <div className="flex justify-between gap-[4px]">
+              {Array.from({length: 9}).map((_, i) => {
+                const letter = fragments[i];
+                const isRevealed = letter !== "";
+                return (
+                  <div key={i} className={`flex-1 aspect-[3/4] border flex items-center justify-center transition-colors
+                    ${isRevealed ? 'border-neon bg-[rgba(0,255,136,0.1)]' : 'border-border-g2 bg-bg2'}`}>
+                    {isRevealed ? (
+                      <span className="font-mono text-[14px] font-bold text-neon">{letter}</span>
+                    ) : (
+                      <span className="font-mono text-[12px] text-border-g2">_</span>
+                    )}
                   </div>
                 );
               })}

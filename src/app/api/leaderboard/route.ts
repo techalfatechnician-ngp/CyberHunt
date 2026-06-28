@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const teamsSnapshot = await db.collection("teams").get();
+    const { data: teamsSnapshot } = await supabase.from("teams").select("*");
 
-    const allTeams = teamsSnapshot.docs
-      .map(doc => doc.data())
+    const allTeams = (teamsSnapshot || [])
       .filter(data => data.is_disqualified !== true); // Filter out disqualified teams
 
     // Sort in memory: Highest score, then highest level, then earliest submission
@@ -20,8 +19,8 @@ export async function GET() {
         return (b.current_level || 1) - (a.current_level || 1); // Descending level
       }
       
-      const timeA = a.last_submission_at?.toMillis ? a.last_submission_at.toMillis() : (a.last_submission_at || 0);
-      const timeB = b.last_submission_at?.toMillis ? b.last_submission_at.toMillis() : (b.last_submission_at || 0);
+      const timeA = a.last_submission_at ? new Date(a.last_submission_at).getTime() : 0;
+      const timeB = b.last_submission_at ? new Date(b.last_submission_at).getTime() : 0;
       return timeA - timeB; // Ascending time
     });
 

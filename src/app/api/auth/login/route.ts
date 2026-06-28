@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 import { signToken, COOKIE_NAME } from "@/lib/jwt";
 import type { AuthPayload } from "@/types";
 
@@ -15,17 +15,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const teamDocRef = db.collection("teams").doc(team_id.toUpperCase().trim());
-    const teamDoc = await teamDocRef.get();
+    const { data: team, error } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("team_id", team_id.toUpperCase().trim())
+      .single();
 
-    if (!teamDoc.exists) {
+    if (error || !team) {
       return NextResponse.json(
         { error: "Invalid Team ID" },
         { status: 401 }
       );
     }
-
-    const team = teamDoc.data()!;
 
     if (team.leader_email.toLowerCase() !== email.toLowerCase().trim()) {
       return NextResponse.json(

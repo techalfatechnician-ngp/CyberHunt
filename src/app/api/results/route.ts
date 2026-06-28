@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const configDoc = await db.collection("event_settings").doc("config").get();
-    const config = configDoc.data() || {};
+    const { data: configDoc } = await supabase.from("event_settings").select("*").eq("id", "config").single();
+    const config = configDoc || {};
     
     // For now, assume results are always "published" in this simple version,
     // or you can check config.results_published
@@ -19,17 +19,16 @@ export async function GET() {
       });
     }
 
-    const teamsSnapshot = await db
-      .collection("teams")
-      .where("is_disqualified", "==", false)
-      .orderBy("score", "desc")
-      .orderBy("current_level", "desc")
-      .orderBy("last_submission_at", "asc")
-      .limit(3)
-      .get();
+    const { data: teamsSnapshot } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("is_disqualified", false)
+      .order("score", { ascending: false })
+      .order("current_level", { ascending: false })
+      .order("last_submission_at", { ascending: true })
+      .limit(3);
 
-    const winners = teamsSnapshot.docs.map((doc) => {
-      const data = doc.data();
+    const winners = (teamsSnapshot || []).map((data) => {
       return {
         team_id: data.team_id,
         team_name: data.team_name,

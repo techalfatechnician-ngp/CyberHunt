@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
-// In a real app we'd verify admin JWT, but for this event we'll skip or use a simple hardcoded secret for now.
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,60 +9,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const teamRef = db.collection("teams").doc(team_id);
-    const subRef = db.collection("submissions").doc(submission_id);
+    const { data: teamData } = await supabase.from("teams").select("*").eq("team_id", team_id).single();
+    const { data: subData } = await supabase.from("submissions").select("*").eq("id", submission_id).single();
 
-    const [teamDoc, subDoc] = await Promise.all([teamRef.get(), subRef.get()]);
-
-    if (!teamDoc.exists || !subDoc.exists) {
+    if (!teamData || !subData) {
       return NextResponse.json({ error: "Data not found" }, { status: 404 });
     }
 
-    const teamData = teamDoc.data()!;
-    const subData = subDoc.data()!;
-
     if (action === "approve") {
-      await subRef.update({ status: "approved" });
+      await supabase.from("submissions").update({ status: "approved" }).eq("id", submission_id);
 
-      await db.collection("activity_logs").add({
-        message: `Mission Control APPROVED Level ${subData.level_id} intel for ${teamData.team_name}.`,
-        timestamp: new Date()
+      await supabase.from("activity_logs").insert({
+        message: `Mission Control APPROVED Level ${subData.level_id} intel for ${teamData.team_name}.`
       });
 
       return NextResponse.json({ success: true });
     }
 
     if (action === "reject") {
-      await subRef.update({ status: "rejected" });
+      await supabase.from("submissions").update({ status: "rejected" }).eq("id", submission_id);
       
-      await db.collection("activity_logs").add({
-        message: `Mission Control REJECTED intel for ${teamData.team_name}.`,
-        timestamp: new Date()
+      await supabase.from("activity_logs").insert({
+        message: `Mission Control REJECTED intel for ${teamData.team_name}.`
       });
 
       return NextResponse.json({ success: true });
     }
 
     if (action === "strike") {
-      await subRef.update({ status: "rejected_ai" });
+      await supabase.from("submissions").update({ status: "rejected_ai" }).eq("id", submission_id);
       
       const newStrikes = (teamData.ai_strikes || 0) + 1;
       const isDisqualified = newStrikes >= 3; // 3 strikes = elimination
 
-      await teamRef.update({
+      await supabase.from("teams").update({
         ai_strikes: newStrikes,
         is_disqualified: isDisqualified
-      });
+      }).eq("team_id", team_id);
 
-      await db.collection("activity_logs").add({
-        message: `WARNING: ${teamData.team_name} received an AI Strike. (${newStrikes}/3)`,
-        timestamp: new Date()
+      await supabase.from("activity_logs").insert({
+        message: `WARNING: ${teamData.team_name} received an AI Strike. (${newStrikes}/3)`
       });
 
       if (isDisqualified) {
-        await db.collection("activity_logs").add({
-          message: `CRITICAL: ${teamData.team_name} has been DISQUALIFIED for repeated AI violations.`,
-          timestamp: new Date()
+        await supabase.from("activity_logs").insert({
+          message: `CRITICAL: ${teamData.team_name} has been DISQUALIFIED for repeated AI violations.`
         });
       }
 

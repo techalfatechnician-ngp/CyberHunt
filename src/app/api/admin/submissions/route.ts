@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const submissionsSnapshot = await db
-      .collection("submissions")
-      .orderBy("timestamp", "desc")
-      .get();
+    const { data: submissionsSnapshot } = await supabase
+      .from("submissions")
+      .select("*")
+      .order("timestamp", { ascending: false });
+
+    const submissionsData = submissionsSnapshot || [];
 
     const submissions = await Promise.all(
-      submissionsSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
+      submissionsData.map(async (data) => {
         // Fetch the associated team to get current strikes
-        const teamDoc = await db.collection("teams").doc(data.team_id).get();
-        const teamData = teamDoc.data() || {};
+        const { data: teamData } = await supabase.from("teams").select("ai_strikes").eq("team_id", data.team_id).single();
+        const ai_strikes = teamData?.ai_strikes || 0;
+        
         const ts = data.timestamp;
-        const date = ts?.toDate ? ts.toDate() : ts instanceof Date ? ts : new Date(ts || Date.now());
+        const date = new Date(ts || Date.now());
 
         return {
-          id: doc.id,
+          id: data.id,
           team_id: data.team_id,
           team_name: data.team_name,
           level_id: data.level_id,
@@ -27,7 +28,7 @@ export async function GET() {
           proof_url: data.proof_url,
           status: data.status,
           submitted_at: date.toISOString(),
-          ai_strikes: teamData.ai_strikes || 0
+          ai_strikes
         };
       })
     );

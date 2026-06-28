@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
@@ -18,7 +18,7 @@ export async function GET() {
     ];
 
     for (const t of teams) {
-      await db.collection("teams").doc(t.id).set({
+      const { error: upsertError } = await supabase.from("teams").upsert({
         team_id: t.id,
         team_name: t.name,
         leader_email: t.email,
@@ -28,61 +28,51 @@ export async function GET() {
         current_level: t.level,
         score: t.score,
         fragments: Array(9).fill(""),
-        last_submission_at: new Date()
+        last_submission_at: new Date().toISOString()
       });
 
+      if (upsertError) throw upsertError;
+
       // Add a dummy submission for each so they show up in the Admin Panel
-      await db.collection("submissions").add({
+      await supabase.from("submissions").insert({
         team_id: t.id,
         team_name: t.name,
         level_id: t.level,
         answer: `DUMMY_FLAG_${t.level}`,
         proof_url: "https://via.placeholder.com/800x400.png?text=Dummy+Proof",
-        status: t.id === "TEST-ALPHA" ? "pending" : (Math.random() > 0.5 ? "approved" : "rejected"),
-        timestamp: new Date()
+        status: t.id === "TEST-ALPHA" ? "pending" : (Math.random() > 0.5 ? "approved" : "rejected")
       });
     }
 
     // 2. Create the 10 Levels
     const levels = [
-      { level_id: "1", answer_hash: "START", fragment: "C", hint_1: "Look at the commit history in the CyberHunt repo.", hint_link: "https://instagram.com" },
-      { level_id: "2", answer_hash: "FLAG2", fragment: "Y", hint_1: "Check the hidden branch.", hint_link: "https://instagram.com" },
-      { level_id: "3", answer_hash: "FLAG3", fragment: "B", hint_1: "Inspect the network tab.", hint_link: "https://instagram.com" },
-      { level_id: "4", answer_hash: "FLAG4", fragment: "E", hint_1: "Look inside the cookies.", hint_link: "https://instagram.com" },
-      { level_id: "5", answer_hash: "FLAG5", fragment: "R", hint_1: "Decode the Base64 string.", hint_link: "https://instagram.com" },
-      { level_id: "6", answer_hash: "FLAG6", fragment: "H", hint_1: "Check the image EXIF data.", hint_link: "https://instagram.com" },
-      { level_id: "7", answer_hash: "FLAG7", fragment: "U", hint_1: "Find the hidden CSS class.", hint_link: "https://instagram.com" },
-      { level_id: "8", answer_hash: "FLAG8", fragment: "N", hint_1: "Look for the invisible text.", hint_link: "https://instagram.com" },
-      { level_id: "9", answer_hash: "FLAG9", fragment: "T", hint_1: "Check the console logs.", hint_link: "https://instagram.com" },
-      { level_id: "10", answer_hash: "FINAL", fragment: "!", hint_1: "Combine all fragments.", hint_link: "https://instagram.com" }
+      { level_id: 1, hint_1: "Look at the commit history in the CyberHunt repo.", hint_link: "https://instagram.com" },
+      { level_id: 2, hint_1: "Check the hidden branch.", hint_link: "https://instagram.com" },
+      { level_id: 3, hint_1: "Inspect the network tab.", hint_link: "https://instagram.com" },
+      { level_id: 4, hint_1: "Look inside the cookies.", hint_link: "https://instagram.com" },
+      { level_id: 5, hint_1: "Decode the Base64 string.", hint_link: "https://instagram.com" },
+      { level_id: 6, hint_1: "Check the image EXIF data.", hint_link: "https://instagram.com" },
+      { level_id: 7, hint_1: "Find the hidden CSS class.", hint_link: "https://instagram.com" },
+      { level_id: 8, hint_1: "Look for the invisible text.", hint_link: "https://instagram.com" },
+      { level_id: 9, hint_1: "Check the console logs.", hint_link: "https://instagram.com" },
+      { level_id: 10, hint_1: "Combine all fragments.", hint_link: "https://instagram.com" }
     ];
 
-    const batch = db.batch();
-    levels.forEach(level => {
-      const ref = db.collection("levels").doc(level.level_id);
-      batch.set(ref, level);
-    });
-
-    await batch.commit();
+    await supabase.from("levels").upsert(levels);
 
     // 3. Create Event Config
-    await db.collection("event_settings").doc("config").set({
-      event_start: new Date(),
-      is_paused: false
+    await supabase.from("event_settings").upsert({
+      id: "config",
+      start_time: new Date().toISOString(),
+      is_active: true
     });
 
     // 4. Clear old activity logs to start fresh
-    const logs = await db.collection("activity_logs").get();
-    const deleteBatch = db.batch();
-    logs.docs.forEach(doc => {
-      deleteBatch.delete(doc.ref);
-    });
-    await deleteBatch.commit();
+    await supabase.from("activity_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
 
     // Log the event start
-    await db.collection("activity_logs").add({
-      message: "SYSTEM: Operation Techalfa Vault has officially launched. Test data seeded successfully.",
-      timestamp: new Date()
+    await supabase.from("activity_logs").insert({
+      message: "SYSTEM: Operation Techalfa Vault has officially launched. Test data seeded successfully."
     });
 
     return NextResponse.json({ 

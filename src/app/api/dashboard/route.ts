@@ -1,57 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase/admin";
+import { supabase } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
+
+// In-memory cache to prevent Firebase quota exhaustion (50k reads/day limit)
+let globalCache = {
+  activeAgents: [] as any[],
+  liveFeed: [] as any[],
+  lastFetch: 0
+};
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const teamDocRef = db.collection("teams").doc(user.team_id);
-    const teamDoc = await teamDocRef.get();
+    const { data: team, error } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("team_id", user.team_id)
+      .single();
     
-    if (!teamDoc.exists) {
+    if (error || !team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    let teamData = teamDoc.data()!;
+    let teamData = team;
 
     // Initialize game timer on first dashboard load
     if (!teamData.started_at) {
-      const now = new Date();
-      await teamDocRef.update({ started_at: now });
+      const now = new Date().toISOString();
+      await supabase.from("teams").update({ started_at: now }).eq("team_id", user.team_id);
       teamData.started_at = now;
     }
 
-    const startTime = teamData.started_at?.toMillis ? teamData.started_at.toMillis() : teamData.started_at instanceof Date ? teamData.started_at.getTime() : Date.now();
-    // Fetch active agents (other teams)
-    const teamsSnapshot = await db.collection("teams").orderBy("score", "desc").limit(50).get();
-    const activeAgents = teamsSnapshot.docs.map(doc => {
-      const data = doc.data();
-      const lastSub = data.last_submission_at;
-      const subTime = lastSub?.toMillis ? lastSub.toMillis() : lastSub?.getTime ? lastSub.getTime() : Date.now();
-      
-      return {
-        id: data.team_id,
-        name: data.team_name,
-        level: data.current_level || 1,
-        status: data.is_disqualified ? "Disqualified" : (Date.now() - subTime > 1000 * 60 * 60 * 2) ? "Stuck" : "Active"
-      };
-    });
+    const startTime = new Date(teamData.started_at).getTime();
+    
+    const now = Date.now();
+    // Cache for 30 seconds to drastically reduce DB reads
+    if (now - globalCache.lastFetch > 30000) {
+      // Fetch active agents (other teams)
+      const { data: teamsSnapshot } = await supabase
+        .from("teams")
+        .select("*")
+        .order("score", { ascending: false })
+        .limit(50);
+        
+      globalCache.activeAgents = (teamsSnapshot || []).map(data => {
+        const lastSub = data.last_submission_at;
+        const subTime = lastSub ? new Date(lastSub).getTime() : Date.now();
+        
+        return {
+          id: data.team_id,
+          name: data.team_name,
+          level: data.current_level || 1,
+          status: data.is_disqualified ? "Disqualified" : (Date.now() - subTime > 1000 * 60 * 60 * 2) ? "Stuck" : "Active"
+        };
+      });
 
-    // Fetch Live Network Feed
-    const feedSnapshot = await db.collection("activity_logs").orderBy("timestamp", "desc").limit(10).get();
-    const liveFeed = feedSnapshot.docs.map(doc => {
-      const data = doc.data();
-      const ts = data.timestamp;
-      const date = ts?.toDate ? ts.toDate() : ts instanceof Date ? ts : new Date(ts || Date.now());
-      const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-      return {
-        id: doc.id,
-        time: timeString,
-        text: data.message
-      };
-    });
+      // Fetch Live Network Feed
+      const { data: feedSnapshot } = await supabase
+        .from("activity_logs")
+        .select("*")
+        .order("timestamp", { ascending: false })
+        .limit(10);
+        
+      globalCache.liveFeed = (feedSnapshot || []).map(data => {
+        const ts = data.timestamp;
+        const date = new Date(ts || Date.now());
+        const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        return {
+          id: data.id,
+          time: timeString,
+          text: data.message
+        };
+      });
+
+      globalCache.lastFetch = now;
+    }
 
     return NextResponse.json({
       team: {
@@ -65,8 +90,8 @@ export async function GET(request: NextRequest) {
         is_disqualified: teamData.is_disqualified || false,
         startedAt: startTime,
       },
-      liveFeed,
-      activeAgents,
+      liveFeed: globalCache.liveFeed,
+      activeAgents: globalCache.activeAgents,
       total_levels: 10
     });
   } catch (error: any) {

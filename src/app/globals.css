@@ -21,6 +21,17 @@
   --font-mono: 'Share Tech Mono', monospace;
   --font-orb: 'Orbitron', sans-serif;
   --font-raj: 'Rajdhani', sans-serif;
+
+  /* Backwards-compatibility aliases for legacy templates */
+  --color-bg: #04060A;
+  --color-surface: #0E141D;
+  --color-surface2: #131B27;
+  --color-accent: #00FF88;
+  --color-text3: #94A3B8;
+  --color-border: rgba(0, 255, 136, 0.12);
+  --color-border2: rgba(0, 255, 136, 0.25);
+  --font-display: 'Orbitron', sans-serif;
+  --font-sans: 'Rajdhani', sans-serif;
 }
 
 html { scroll-behavior: smooth; }

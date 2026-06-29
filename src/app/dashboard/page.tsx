@@ -22,14 +22,14 @@ interface DashboardData {
 }
 
 const MISSIONS = [
-  { id: 1, title: "THE INITIAL BREACH", desc: "Your target is the TechAlfa public repository. Find the initial breach point and extract the embedded cipher key or flag.", link: "https://github.com/techalfatechnician-ngp/CyberHunt.git" },
+  { id: 1, title: "THE INITIAL BREACH", desc: "Our intelligence indicates a vulnerability in TechAlfa's foundation. We've intercepted a link to their public repository. Inspect the building blocks closely—developers often leave whispers behind that were never meant to be executed. Find the first fragment hidden in plain sight.", link: "https://github.com/techalfatechnician-ngp/CyberHunt.git" },
   { id: 2, title: "PHANTOM BRANCH", desc: "A hidden branch contains experimental code. Navigate through the commit history to uncover the hidden message.", link: "https://github.com/techalfatechnician-ngp/CyberHunt.git" },
   { id: 3, title: "NETWORK SHADOWS", desc: "Inspect the network payloads. A specific request is transmitting encrypted data in the headers. Intercept it.", link: "#" },
   { id: 4, title: "COOKIE JAR", desc: "The authentication system left a vulnerable trace in your browser cookies. Decode the session token.", link: "#" },
   { id: 5, title: "BASE64 ANOMALY", desc: "We found a strange string in the server logs. It looks like standard Base64, but something is off. Decode it.", link: "#" },
   { id: 6, title: "EXIF GHOST", desc: "Analyze the provided image file. The metadata contains GPS coordinates that point to your next clue.", link: "#" },
   { id: 7, title: "INVISIBLE INK", desc: "The CSS on the target page hides a crucial element. Use your developer tools to reveal the hidden text.", link: "#" },
-  { id: 8, title: "ENGINEER'S TRIAL", desc: "Solve the 4 coding algorithms provided. Their outputs will form a valid TechAlfa LinkedIn URL containing the fragment.", link: "#" },
+  { id: 8, title: "ENGINEER'S TRIAL", desc: "A fragmented transmission was intercepted. It contains 4 distinct logical trials. The output of each trial is a piece of a web address. Solve them, arrange the pieces correctly, and visit the destination to find your fragment.", link: "#" },
   { id: 9, title: "RAINBOW BREACH", desc: "A database was leaked containing MD5 hashes. Use rainbow tables to decrypt the admin's password hash.", link: "#" },
   { id: 10, title: "THE FINAL DECRYPTION", desc: "You have collected all fragments. Unscramble the letters to form the final Master Key and shut down the rogue AI.", link: "#" },
 ];
@@ -245,38 +245,25 @@ export default function DashboardPage() {
         </div>
         
         {/* CENTER STAT BAR */}
-        <div className="flex items-center gap-10 font-mono text-[12px] text-text2 tracking-[2px]">
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-text2/60 mb-1 uppercase">HINTS USED</span>
-            <span className="text-white font-bold text-sm">{team?.hints_used || 0}</span>
-          </div>
-          <span className="text-border-g2 opacity-50">|</span>
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-text2/60 mb-1 uppercase">AI STRIKES</span>
-            <span className={`font-bold text-sm ${team?.ai_strikes ? 'text-red text-glow-red' : 'text-white'}`}>{team?.ai_strikes || 0}/3</span>
-          </div>
-          <span className="text-border-g2 opacity-50">|</span>
-          <div className="px-6 py-1.5 bg-bg2 border border-border-g2 rounded shadow-[inset_0_0_8px_rgba(0,255,136,0.05)]">
-            <span className={`font-orb text-[30px] font-bold tracking-[1.5px] text-neon text-glow-green ${isCritical ? 'text-red text-glow-red animate-blink' : isWarning ? 'text-amber text-glow-amber' : ''}`}>
+        <div className="flex items-center gap-8 font-mono tracking-[1.5px] mx-auto">
+          {/* Stat Block (Moved to Sidebar) */}
+          
+          {/* Timer - keep prominent */}
+          <div className="px-10 py-2.5 bg-bg2/80 border border-border-g2/50 rounded shadow-[inset_0_0_12px_rgba(0,255,136,0.1)] relative overflow-hidden group min-w-[180px] flex justify-center">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-neon opacity-50"></div>
+            <span className={`font-orb text-[32px] font-bold tracking-[3px] text-neon text-glow-green ${isCritical ? 'text-red text-glow-red animate-blink' : isWarning ? 'text-amber text-glow-amber' : ''}`}>
               {timeLeft}
             </span>
+            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-neon opacity-20"></div>
           </div>
-          <span className="text-border-g2 opacity-50">|</span>
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-text2/60 mb-1 uppercase">ACTIVE SECTOR</span>
-            <span className="text-white font-bold text-sm">{selectedMission}/10</span>
-          </div>
-          <span className="text-border-g2 opacity-50">|</span>
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-text2/60 mb-1 uppercase">KEYS SECURED</span>
-            <span className="text-neon font-bold text-sm text-glow-green">{securedFragmentsCount}/9</span>
-          </div>
+          
+          {/* Progress stats moved to sidebar */}
         </div>
 
         <div className="flex items-center gap-6 font-mono text-[12px]">
-          <div className="flex flex-col items-end mr-2">
-            <span className="text-[9px] text-text2/60 mb-1 uppercase">OPERATIONAL AGENT</span>
-            <span className="text-neon font-bold tracking-[2px] text-glow-green text-sm uppercase">{team?.name || "UNKNOWN"}</span>
+          <div className="flex items-center gap-3 mr-4">
+            <span className="text-[11px] text-text2/60 uppercase whitespace-nowrap tracking-[1px]">OPERATIONAL AGENT</span>
+            <span className="text-neon font-bold tracking-[2px] text-glow-green text-[16px] uppercase whitespace-nowrap">{team?.name || "UNKNOWN"}</span>
           </div>
           <button 
             onClick={() => router.push("/")}
@@ -358,6 +345,38 @@ export default function DashboardPage() {
               );
             })}
           </div>
+
+          {/* TEAM STATUS */}
+          <div className="p-5 flex items-center justify-center gap-8 border-b border-border-g2 bg-bg0">
+            <div className="flex flex-col items-center justify-center">
+              <span className="font-mono text-[10px] text-neon mb-1.5 uppercase whitespace-nowrap tracking-[2px]">Hints Used</span>
+              <span className="font-orb text-[20px] text-white font-bold leading-none">{team?.hints_used || 0}</span>
+            </div>
+            
+            <div className="w-[1px] h-10 bg-border-g2 opacity-80"></div>
+            
+            <div className="flex flex-col items-center justify-center">
+              <span className="font-mono text-[10px] text-neon mb-1.5 uppercase whitespace-nowrap tracking-[2px]">AI Strikes</span>
+              <span className={`font-orb text-[20px] font-bold leading-none ${team?.ai_strikes ? 'text-red text-glow-red' : 'text-white'}`}>{team?.ai_strikes || 0}<span className="text-[12px] text-text2/50">/3</span></span>
+            </div>
+          </div>
+
+          {/* MISSION PROGRESS */}
+          <div className="p-5 flex items-center justify-center gap-8 border-b border-border-g2 bg-bg0">
+            <div className="flex flex-col items-center justify-center">
+              <span className="font-mono text-[10px] text-neon mb-1.5 uppercase whitespace-nowrap tracking-[2px]">Active Sector</span>
+              <span className="font-orb text-[20px] text-white font-bold leading-none">{selectedMission}<span className="text-[12px] text-text2/50">/10</span></span>
+            </div>
+            
+            <div className="w-[1px] h-10 bg-border-g2 opacity-80"></div>
+            
+            <div className="flex flex-col items-center justify-center">
+              <span className="font-mono text-[10px] text-neon mb-1.5 uppercase whitespace-nowrap tracking-[2px]">Keys Secured</span>
+              <span className="font-orb text-[20px] text-neon font-bold text-glow-green leading-none">{securedFragmentsCount}<span className="text-[12px] opacity-50">/9</span></span>
+            </div>
+          </div>
+          
+          <div className="mt-auto"></div>
         </div>
 
         {/* CENTER COLUMN: MISSION CONTROL */}
@@ -383,10 +402,12 @@ export default function DashboardPage() {
               <div className="font-raj text-[16px] leading-[1.7] text-text font-medium mb-6">
                 {currentMissionObj.desc}
               </div>
-              <a href={currentMissionObj.link} target="_blank" className="inline-flex items-center gap-2 font-mono text-[13px] text-[#00d4ff] no-underline border-b border-[#00d4ff44] pb-1 tracking-[1px] transition-colors hover:border-[#00d4ff] hover:text-[#00ffff]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
-                {currentMissionObj.link.toUpperCase()}
-              </a>
+              <div className="mt-4">
+                <a href={currentMissionObj.link} target="_blank" className="inline-flex items-center gap-2 font-mono text-[13px] text-[#00d4ff] no-underline border-b border-[#00d4ff44] pb-1 tracking-[1px] transition-colors hover:border-[#00d4ff] hover:text-[#00ffff]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                  {currentMissionObj.link.toUpperCase()}
+                </a>
+              </div>
             </div>
 
             {/* ENCRYPTED INTEL VAULT */}

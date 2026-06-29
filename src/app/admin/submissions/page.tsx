@@ -14,6 +14,7 @@ interface Submission {
   status: string;
   submitted_at: string;
   ai_strikes: number;
+  hints_used: number;
 }
 
 export default function AdminSubmissionsPage() {
@@ -106,6 +107,9 @@ export default function AdminSubmissionsPage() {
                 <div className="text-accent font-mono font-bold text-sm truncate max-w-[150px]">{sub.team_name}</div>
                 <div className="text-text3 font-mono text-[10px] mt-1">
                   LVL {sub.level_id} &middot; {new Date(sub.submitted_at).toLocaleTimeString()}
+                </div>
+                <div className="text-accent/80 font-mono text-[10px] mt-1 uppercase tracking-wider">
+                  Hints Used: {sub.hints_used}
                 </div>
               </div>
               <div className="flex gap-1" title={`${sub.ai_strikes}/3 AI Strikes`}>

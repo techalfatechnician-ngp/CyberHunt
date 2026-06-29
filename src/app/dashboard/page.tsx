@@ -235,33 +235,52 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-bg0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(0,255,136,0.05)_0%,transparent_60%)] flex flex-col overflow-hidden">
       
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-6 h-[52px] bg-bg1 border-b border-border-g2 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-neon animate-pulse"></div>
-          <span className="font-orb text-[14px] font-bold tracking-[3px] text-neon">OPERATION VAULT</span>
+      <div className="flex items-center justify-between px-8 h-[88px] bg-bg1 border-b border-border-g2 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center gap-5">
+          <div className="w-3.5 h-3.5 rounded-full bg-neon animate-pulse shadow-[0_0_12px_#00FF88]"></div>
+          <div className="flex flex-col">
+            <span className="font-orb text-[22px] font-black tracking-[5px] text-neon text-glow-green leading-none">OPERATION VAULT</span>
+            <span className="font-mono text-[10px] text-text2 tracking-[2.5px] mt-2 opacity-85">// CLASSIFIED OPERATIONS CENTRE</span>
+          </div>
         </div>
         
         {/* CENTER STAT BAR */}
-        <div className="flex items-center gap-5 font-mono text-[11px] text-text2 tracking-[2px]">
-          <span>HINTS USED <span className="text-white font-bold">{team?.hints_used || 0}</span></span>
-          <span className="text-border-g2">|</span>
-          <span>AI STRIKES <span className="text-amber font-bold">{team?.ai_strikes || 0}/3</span></span>
-          <span className="text-border-g2">|</span>
-          <span className={`font-orb text-[20px] font-bold ${isCritical ? 'text-red animate-blink' : isWarning ? 'text-amber' : 'text-neon'}`}>
-            {timeLeft}
-          </span>
-          <span className="text-border-g2">|</span>
-          <span>MISSION <span className="text-white font-bold">{selectedMission}/10</span></span>
-          <span className="text-border-g2">|</span>
-          <span>FRAGMENTS <span className="text-white font-bold">{securedFragmentsCount}/9</span></span>
+        <div className="flex items-center gap-10 font-mono text-[12px] text-text2 tracking-[2px]">
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] text-text2/60 mb-1 uppercase">HINTS USED</span>
+            <span className="text-white font-bold text-sm">{team?.hints_used || 0}</span>
+          </div>
+          <span className="text-border-g2 opacity-50">|</span>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] text-text2/60 mb-1 uppercase">AI STRIKES</span>
+            <span className={`font-bold text-sm ${team?.ai_strikes ? 'text-red text-glow-red' : 'text-white'}`}>{team?.ai_strikes || 0}/3</span>
+          </div>
+          <span className="text-border-g2 opacity-50">|</span>
+          <div className="px-6 py-1.5 bg-bg2 border border-border-g2 rounded shadow-[inset_0_0_8px_rgba(0,255,136,0.05)]">
+            <span className={`font-orb text-[30px] font-bold tracking-[1.5px] text-neon text-glow-green ${isCritical ? 'text-red text-glow-red animate-blink' : isWarning ? 'text-amber text-glow-amber' : ''}`}>
+              {timeLeft}
+            </span>
+          </div>
+          <span className="text-border-g2 opacity-50">|</span>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] text-text2/60 mb-1 uppercase">ACTIVE SECTOR</span>
+            <span className="text-white font-bold text-sm">{selectedMission}/10</span>
+          </div>
+          <span className="text-border-g2 opacity-50">|</span>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] text-text2/60 mb-1 uppercase">KEYS SECURED</span>
+            <span className="text-neon font-bold text-sm text-glow-green">{securedFragmentsCount}/9</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-5 font-mono text-[11px]">
-          <span className="text-text2">AGENT:</span>
-          <span className="text-neon font-bold tracking-[2px]">{team?.name || "UNKNOWN"}</span>
+        <div className="flex items-center gap-6 font-mono text-[12px]">
+          <div className="flex flex-col items-end mr-2">
+            <span className="text-[9px] text-text2/60 mb-1 uppercase">OPERATIONAL AGENT</span>
+            <span className="text-neon font-bold tracking-[2px] text-glow-green text-sm uppercase">{team?.name || "UNKNOWN"}</span>
+          </div>
           <button 
             onClick={() => router.push("/")}
-            className="border border-red text-red px-4 py-[6px] font-orb text-[10px] tracking-[2px] uppercase transition-colors hover:bg-red hover:text-black"
+            className="border border-red/50 text-red bg-red/5 px-6 py-[10px] font-orb text-[11px] tracking-[2px] uppercase transition-all duration-200 hover:bg-red hover:text-black hover:shadow-[0_0_15px_rgba(255,51,51,0.3)] rounded-[3px]"
           >
             DISCONNECT
           </button>
@@ -331,71 +350,25 @@ export default function DashboardPage() {
                   }}
                   className={`relative aspect-[2/1] border flex items-center justify-center transition-all ${boxStyle}`}
                 >
-                  <span className={`font-orb text-[18px] font-bold ${numberColor}`}>
-                    {m.id.toString().padStart(2, '0')}
+                  <span className={`font-mono text-[14px] font-bold tracking-[0.5px] ${numberColor}`}>
+                    MISSION {m.id.toString().padStart(2, '0')}
                   </span>
                   {extraIcon}
                 </div>
               );
             })}
           </div>
-
-          {/* LIVE SCOREBOARD */}
-          <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center gap-2 shrink-0 bg-bg1">
-            <Tv size={14} className="text-neon" />
-            <span className="font-orb text-[10px] font-bold tracking-[3px] text-white uppercase">LIVE SCOREBOARD</span>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto bg-bg0">
-            {!activeAgents || activeAgents.length === 0 ? (
-              <div className="p-4 text-center text-text2 text-xs font-mono tracking-widest">NO SIGNALS DETECTED</div>
-            ) : (
-              activeAgents.map((agent: any, i: number) => {
-                const isSelf = agent.id === team.id;
-                const pips = Array.from({ length: 10 });
-                return (
-                  <div key={agent.id} className={`p-[10px_14px] border-b border-border-g flex items-center justify-between hover:bg-bg2 transition-colors cursor-pointer ${isSelf ? 'bg-[rgba(0,255,136,0.05)] border-l-2 border-l-neon' : ''}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`font-mono text-[10px] w-5 h-5 rounded-[2px] flex items-center justify-center font-bold
-                        ${i === 0 ? 'bg-[#ffaa0022] text-amber border border-[#ffaa0044]' : 
-                          i === 1 ? 'bg-[#c0c0c022] text-[#c0c0c0] border border-[#c0c0c044]' : 
-                          i === 2 ? 'bg-[#cd7f3222] text-[#cd7f32] border border-[#cd7f3244]' : 
-                          'bg-bg3 text-text2'}`}>
-                        {i + 1}
-                      </div>
-                      <div className="overflow-hidden">
-                        <div className={`font-raj text-[13px] font-bold tracking-[1px] truncate max-w-[120px] ${isSelf ? 'text-neon' : i === 0 ? 'text-amber' : 'text-text'}`}>
-                          {agent.name}
-                        </div>
-                        <div className="flex gap-[2px] mt-[3px]">
-                          {pips.map((_, idx) => (
-                            <div 
-                              key={idx} 
-                              className={`w-[5px] h-[5px] rounded-sm ${idx < agent.level ? (i === 0 ? 'bg-amber' : 'bg-neon') : 'bg-border-g2'}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={`font-mono text-[11px] font-bold ${isSelf || i === 0 ? 'text-amber' : 'text-neon'}`}>
-                      {agent.level}/10
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
         </div>
 
         {/* CENTER COLUMN: MISSION CONTROL */}
-        <div className="bg-bg0 p-6 flex flex-col gap-6 overflow-y-auto relative">
+        <div className="bg-bg0 p-6 overflow-y-auto relative">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,136,0.03)_1px,transparent_1px)] bg-[length:100%_4px] pointer-events-none opacity-50"></div>
           
-          <div className="relative z-10 flex flex-col gap-6 h-full">
+          <div className="relative z-10 flex flex-col gap-6">
             <div className="flex justify-between items-center pb-[14px] border-b border-border-g2">
               <div className="flex items-baseline gap-3">
                 <div className="font-orb text-[24px] font-black text-white tracking-[2px]">
-                  MISSION <span className="text-neon">{selectedMission}</span>
+                  TARGET: <span className="text-neon">MISSION {selectedMission.toString().padStart(2, '0')}</span>
                 </div>
                 <div className="font-mono text-[14px] text-text2">OF 10</div>
               </div>
@@ -480,7 +453,7 @@ export default function DashboardPage() {
             )}
 
             {/* TRANSMIT SOLUTION */}
-            <div className="mt-auto pt-4">
+            <div className="mt-2 pt-2">
               <div className="font-orb text-[10px] font-bold tracking-[6px] text-text2 text-center p-[8px_0] mb-4 relative">
                 <div className="absolute top-1/2 left-0 right-0 h-px bg-border-g2 -z-10"></div>
                 <span className="bg-bg0 px-4">— TRANSMIT SOLUTION —</span>
@@ -564,22 +537,50 @@ export default function DashboardPage() {
               );
             })}
           </div>
+          {/* LIVE NET STATUS */}
+          <div className="p-[14px_18px_10px] border-b border-border-g2 flex items-center gap-2 shrink-0 bg-bg1">
+            <Tv size={14} className="text-neon" />
+            <span className="font-orb text-[10px] font-bold tracking-[3px] text-white uppercase">LIVE NET STATUS</span>
+          </div>
           
-          {/* FRAGMENT STATUS LIST */}
-          <div className="p-[16px_18px] flex-1 overflow-y-auto border-b border-border-g2 bg-bg0">
-            <div className="grid gap-[6px]">
-              {fragments.map((frag, idx) => {
-                const isSecured = frag !== "";
+          <div className="flex-1 overflow-y-auto bg-bg0">
+            {!activeAgents || activeAgents.length === 0 ? (
+              <div className="p-4 text-center text-text2 text-xs font-mono tracking-widest">NO SIGNALS DETECTED</div>
+            ) : (
+              activeAgents.map((agent: any, i: number) => {
+                const isSelf = agent.id === team.id;
+                const pips = Array.from({ length: 10 });
                 return (
-                  <div key={idx} className="flex items-center justify-between py-1.5 border-b border-[#00ff8811]">
-                    <span className={`font-mono text-[11px] font-bold ${isSecured ? 'text-neon' : 'text-text2'}`}>L{idx + 1}</span>
-                    <span className={`font-mono text-[10px] tracking-[1px] ${isSecured ? 'text-neon' : 'text-text2 opacity-50'}`}>
-                      {isSecured ? '● SECURED' : '○ PENDING'}
-                    </span>
+                  <div key={agent.id} className={`p-[10px_14px] border-b border-border-g flex items-center justify-between hover:bg-bg2 transition-colors cursor-pointer ${isSelf ? 'bg-[rgba(0,255,136,0.05)] border-l-2 border-l-neon' : ''}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`font-mono text-[10px] w-5 h-5 rounded-[2px] flex items-center justify-center font-bold
+                        ${i === 0 ? 'bg-[#ffaa0022] text-amber border border-[#ffaa0044]' : 
+                          i === 1 ? 'bg-[#c0c0c022] text-[#c0c0c0] border border-[#c0c0c044]' : 
+                          i === 2 ? 'bg-[#cd7f3222] text-[#cd7f32] border border-[#cd7f3244]' : 
+                          'bg-bg3 text-text2'}`}>
+                        {(i + 1).toString().padStart(2, '0')}
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className={`font-raj text-[13px] font-bold tracking-[1px] truncate max-w-[120px] ${isSelf ? 'text-neon' : i === 0 ? 'text-amber' : 'text-text'}`}>
+                          {agent.name}
+                        </div>
+                        <div className="flex gap-[2px] mt-[3px]">
+                          {pips.map((_, idx) => (
+                            <div 
+                              key={idx} 
+                              className={`w-[5px] h-[5px] rounded-sm ${idx < agent.level ? (i === 0 ? 'bg-amber' : 'bg-neon') : 'bg-border-g2'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`font-mono text-[11px] font-bold ${isSelf || i === 0 ? 'text-amber' : 'text-neon'}`}>
+                      {agent.level}/10
+                    </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
 
           {/* DECODED WORD */}

@@ -2,19 +2,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg0: #080c10;
-  --color-bg1: #0d1318;
-  --color-bg2: #111921;
-  --color-bg3: #16202c;
-  --color-border-g: rgba(0, 255, 136, 0.13);
-  --color-border-g2: rgba(0, 255, 136, 0.27);
-  --color-neon: #00ff88;
-  --color-neon-dim: #00cc6a;
-  --color-amber: #ffaa00;
-  --color-red: #ff3333;
-  --color-blue: #00aaff;
-  --color-text: #c8d8e8;
-  --color-text2: #7a9ab0;
+  --color-bg0: #04060A;
+  --color-bg1: #080C12;
+  --color-bg2: #0E141D;
+  --color-bg3: #131B27;
+  --color-border-g: rgba(0, 255, 136, 0.12);
+  --color-border-g2: rgba(0, 255, 136, 0.25);
+  --color-neon: #00FF88;
+  --color-cyan: #00E5FF;
+  --color-neon-dim: #00CC6A;
+  --color-amber: #FFC857;
+  --color-red: #FF4D6D;
+  --color-blue: #3B82F6;
+  --color-purple: #8B5CF6;
+  --color-green: #00FF88;
+  --color-text: #E2E8F0;
+  --color-text2: #94A3B8;
   --font-mono: 'Share Tech Mono', monospace;
   --font-orb: 'Orbitron', sans-serif;
   --font-raj: 'Rajdhani', sans-serif;
@@ -175,18 +178,157 @@ input:-webkit-autofill:focus {
   font-family: var(--font-mono);
 }
 
-/* UI Overhaul Utilities */
+/* UI Overhaul Utilities: Tactical & Industrial */
 .bg-grid-pattern {
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
+    linear-gradient(to right, rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 .text-glow {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 136, 0.2);
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.text-glow-blue {
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 8px rgba(255, 77, 109, 0.5);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 8px rgba(255, 200, 87, 0.5);
 }
 
 .text-glow-white {
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3), 0 0 20px rgba(255, 255, 255, 0.2);
+  text-shadow: 0 0 8px rgba(226, 232, 240, 0.2);
 }
+
+/* Industrial Tactical Background */
+.cyber-bg {
+  position: relative;
+  background-color: var(--color-bg0);
+  background-image: 
+    linear-gradient(rgba(0, 255, 136, 0.008) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 136, 0.008) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-attachment: fixed;
+}
+
+/* Minimal Grid Overlay */
+.cyber-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(0, 255, 136, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 255, 136, 0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridMove 90s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Faint scan lines */
+.cyber-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(10, 15, 25, 0) 50%, 
+    rgba(0, 0, 0, 0.2) 50%
+  );
+  background-size: 100% 3px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.25;
+}
+
+/* Soft industrial vignette */
+.cyber-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(4, 6, 10, 0.8) 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Tactical Panel styling (HTB/CTF style) */
+.cyber-tactical-panel {
+  background: var(--color-bg1);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease-in-out;
+}
+
+.cyber-tactical-panel:hover {
+  border-color: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.04);
+}
+
+.cyber-tactical-panel-cyan {
+  background: var(--color-bg1);
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease-in-out;
+}
+
+.cyber-tactical-panel-cyan:hover {
+  border-color: rgba(0, 229, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 229, 255, 0.04);
+}
+
+.cyber-tactical-panel-purple {
+  background: var(--color-bg1);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease-in-out;
+}
+
+.cyber-tactical-panel-purple:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.04);
+}
+
+/* Animations */
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 48px 48px; }
+}
+
+@keyframes scanShimmer {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scan-shimmer {
+  animation: scanShimmer 4s ease-in-out infinite;
+}
+
+/* Cyber Custom scrollbar */
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.15) !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neon) !important;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg0) !important;
+}
+

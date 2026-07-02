@@ -98,7 +98,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="text-text2 text-lg md:text-xl max-w-md leading-relaxed mb-12">
-            An online cybersecurity treasure hunt. Solve challenges across the web, outsmart the system, and unlock the vault. You have 90 minutes.
+            An online cybersecurity treasure hunt. Solve challenges across the web, outsmart the system, and unlock the vault. You have 120 minutes.
           </p>
 
           <div className="flex items-center gap-10">
@@ -108,7 +108,7 @@ export default function LandingPage() {
             </div>
             <div className="w-px h-10 bg-surface2"></div>
             <div>
-              <div className="text-3xl font-display font-bold text-accent text-glow mb-1">90</div>
+              <div className="text-3xl font-display font-bold text-accent text-glow mb-1">120</div>
               <div className="text-text3 text-xs tracking-widest">MINUTES</div>
             </div>
             <div className="w-px h-10 bg-surface2"></div>

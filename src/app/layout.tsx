@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Operation Vault | CyberHunt",
-  description: "A cybersecurity CTF event by TechAlfa. 10 levels. 90 minutes. Can you crack the code?",
+  description: "A cybersecurity CTF event by TechAlfa. 10 levels. 120 minutes. Can you crack the code?",
   icons: { icon: "/favicon.ico" },
 };
 

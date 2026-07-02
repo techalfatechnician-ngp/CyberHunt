@@ -26,9 +26,9 @@ interface DashboardData {
 }
 
 const MISSIONS = [
-  { id: 1, title: "THE INITIAL BREACH", desc: "Our intelligence indicates a vulnerability in TechAlfa's foundation. We've intercepted a link to their public repository. Inspect the building blocks closely—developers often leave whispers behind that were never meant to be executed. Find the first fragment hidden in plain sight.", link: "https://github.com/kharbikarsagar17-pixel/testrepo.git" },
+  { id: 1, title: "THE INITIAL BREACH", desc: "Our intelligence indicates a vulnerability in TechAlfa's foundation. We've intercepted a link to their public repository. Inspect the building blocks closely—developers often leave whispers behind that were never meant to be executed. Find the first fragment hidden in plain sight.", link: "https://github.com/kharbikarsagar17-pixel/cipher-core.git" },
   { id: 2, title: "PHANTOM BRANCH", desc: "A hidden branch contains experimental code. Navigate through the commit history to uncover the hidden message.", link: "https://cyberhunt-2.vercel.app/login" },
-  { id: 3, title: "NETWORK SHADOWS", desc: "Inspect the network payloads. A specific request is transmitting encrypted data in the headers. Intercept it.", link: "https://github.com/kharbikarsagar17-pixel/testrepo.git" },
+  { id: 3, title: "NETWORK SHADOWS", desc: "Inspect the network payloads. A specific request is transmitting encrypted data in the headers. Intercept it.", link: "https://github.com/kharbikarsagar17-pixel/cipher-core.git" },
   { id: 4, title: "COOKIE JAR", desc: "The authentication system left a vulnerable trace in your browser cookies. Decode the session token.", link: "https://cyberhunt-2.vercel.app/login" },
   { id: 5, title: "BASE64 ANOMALY", desc: "We found a strange string in the server logs. It looks like standard Base64, but something is off. Decode it.", link: "#" },
   { id: 6, title: "EXIF GHOST", desc: "Analyze the provided image file. The metadata contains GPS coordinates that point to your next clue.", link: "https://techalfa-website-ivory.vercel.app/" },
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   const [selectedMission, setSelectedMission] = useState(1);
 
-  const [timeLeft, setTimeLeft] = useState("90:00");
+  const [timeLeft, setTimeLeft] = useState("120:00");
   const [isCritical, setIsCritical] = useState(false);
   const [isWarning, setIsWarning] = useState(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -107,9 +107,9 @@ export default function DashboardPage() {
         elapsed = data.team.level10_started_at ? (now - new Date(data.team.level10_started_at).getTime()) : 0;
         remaining = data.team.level10_started_at ? Math.max(0, 15 * 60 * 1000 - elapsed) : 15 * 60 * 1000;
       } else {
-        // 90-minute global countdown
+        // 120-minute global countdown
         elapsed = now - data.team.startedAt;
-        remaining = Math.max(0, 90 * 60 * 1000 - elapsed);
+        remaining = Math.max(0, 120 * 60 * 1000 - elapsed);
       }
 
       const totalSeconds = Math.floor(remaining / 1000);

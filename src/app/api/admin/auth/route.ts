@@ -20,8 +20,6 @@ export async function POST(request: NextRequest) {
         name: "cyberhunt_admin_token",
         value: "VERIFIED",
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
         maxAge: 60 * 60 * 24, // 24 hours
         path: "/",
       });

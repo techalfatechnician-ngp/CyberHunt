@@ -74,7 +74,7 @@ export async function sendRegistrationEmail(
                 </div>
                 <div class="info-row">
                   <span class="info-label">Duration</span>
-                  <span class="info-value">90 Minutes</span>
+                  <span class="info-value">120 Minutes</span>
                 </div>
               </div>
               <div class="warning">

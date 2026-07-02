@@ -27,9 +27,9 @@ interface DashboardData {
 
 const MISSIONS = [
   { id: 1, title: "THE INITIAL BREACH", desc: "Our intelligence indicates a vulnerability in TechAlfa's foundation. We've intercepted a link to their public repository. Inspect the building blocks closely—developers often leave whispers behind that were never meant to be executed. Find the first fragment hidden in plain sight.", link: "https://github.com/kharbikarsagar17-pixel/testrepo.git" },
-  { id: 2, title: "PHANTOM BRANCH", desc: "A hidden branch contains experimental code. Navigate through the commit history to uncover the hidden message.", link: "" },
+  { id: 2, title: "PHANTOM BRANCH", desc: "A hidden branch contains experimental code. Navigate through the commit history to uncover the hidden message.", link: "https://cyberhunt-2.vercel.app/login" },
   { id: 3, title: "NETWORK SHADOWS", desc: "Inspect the network payloads. A specific request is transmitting encrypted data in the headers. Intercept it.", link: "https://github.com/kharbikarsagar17-pixel/testrepo.git" },
-  { id: 4, title: "COOKIE JAR", desc: "The authentication system left a vulnerable trace in your browser cookies. Decode the session token.", link: "#" },
+  { id: 4, title: "COOKIE JAR", desc: "The authentication system left a vulnerable trace in your browser cookies. Decode the session token.", link: "https://cyberhunt-2.vercel.app/login" },
   { id: 5, title: "BASE64 ANOMALY", desc: "We found a strange string in the server logs. It looks like standard Base64, but something is off. Decode it.", link: "#" },
   { id: 6, title: "EXIF GHOST", desc: "Analyze the provided image file. The metadata contains GPS coordinates that point to your next clue.", link: "https://techalfa-website-ivory.vercel.app/" },
   { id: 7, title: "DEBUG CHALLENGE", desc: "A compromised system log has been extracted into a PDF document. Your task is to analyze the traces and debug the sequence to find the fragment.", link: "/debug_challenge.pdf" },

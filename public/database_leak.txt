@@ -4,22 +4,21 @@ TABLE: USERS
 ENCRYPTION: MD5 (VULNERABLE)
 =========================================
 
-ID | USERNAME       | PASSWORD_HASH
----|----------------|----------------------------------
-01 | sysadmin       | 5f4dcc3b5aa765d61d8327deb882cf99
-02 | support_team   | e10adc3949ba59abbe56e057f20f883e
-03 | test_user      | 8b958c21f143715b9c515a45b73d2745
-04 | developer_01   | b253d1045dbb6f4e24eb872957b443b7
-05 | backup_svc     | 098f6bcd4621d373cade4e832627b4f6
-06 | db_admin       | db0681329c5e31525af10eecdf199320
-07 | agent_beta     | 1d72310edc006dadf2190caad5802983
-08 | agent_alpha    | c1d9f50f86825a1a2302ec2449c17196;
-09 | intern_2023    | a5410ee37744c574ba5790034ea08f79
-10 | hr_manager     | bd61b17d0577a6411516e8b4eeb6e8aa
-11 | finance_dept   | cc6247c452e6900a6e03328eb9949987
-12 | marketing_lead | c6923eb8f2bdc63e264663e2ff5141e3
-13 | security_bot   | a2b4f6cfc7a7e3713088dcbd02517676
-14 | ceo_account    | 4f033a0a2bf2fe0b68800a3079545ce1
-15 | guest_access   | 900150983cd24fb0d6963f7d28e17f72
+ID | HASH
+---|----------------------------------
+01 | 5f4dcc3b5aa765d61d8327deb882cf99
+02 | e10adc3949ba59abbe56e057f20f883e
+03 | 8b958c21f143715b9c515a45b73d2745
+04 | b253d1045dbb6f4e24eb872957b443b7
+05 | 098f6bcd4621d373cade4e832627b4f6
+06 | db0681329c5e31525af10eecdf199320
+07 | 1d72310edc006dadf2190caad5802983
+08 | c1d9f50f86825a1a2302ec2449c17196
+09 | a5410ee37744c574ba5790034ea08f79
+10 | bd61b17d0577a6411516e8b4eeb6e8aa
+11 | cc6247c452e6900a6e03328eb9949987
+12 | c6923eb8f2bdc63e264663e2ff5141e3
+13 | a2b4f6cfc7a7e3713088dcbd02517676
+14 | 4f033a0a2bf2fe0b68800a3079545ce1
+15 | 900150983cd24fb0d6963f7d28e17f72
 
-[END OF DUMP]

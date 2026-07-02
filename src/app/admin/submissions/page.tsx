@@ -165,7 +165,7 @@ export default function AdminSubmissionsPage() {
                   Hints Used: {sub.hints_used}
                 </div>
               </div>
-              <div className="flex gap-1" title={`${sub.ai_strikes}/3 AI Strikes`}>
+              <div className="flex gap-1" title={`${sub.ai_strikes}/3 AI Submissions`}>
                 {[1, 2, 3].map(i => (
                   <div key={i} className={`w-2 h-2 rounded-full ${i <= sub.ai_strikes ? 'bg-red shadow-[0_0_8px_#ff3c3c]' : 'bg-surface2 border border-surface2'}`} />
                 ))}
@@ -219,7 +219,7 @@ export default function AdminSubmissionsPage() {
                   className="w-full text-xs py-2 mt-2 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white"
                   onClick={() => handleAction("strike", sub.id, sub.team_id)}
                 >
-                  ⚡ AI STRIKE
+                  ⚡ MARK AS AI
                 </Button>
               </  >
             )}

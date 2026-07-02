@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         if (attempts >= 2) {
           return NextResponse.json({ error: "MAXIMUM ATTEMPTS REACHED. MISSION LOCKED." }, { status: 403 });
         }
-        if (answer.toUpperCase().trim() !== "CYBERHUNT") {
+        if (answer.toUpperCase().trim() !== "ARCHLINUX") {
           await supabase.from("teams").update({ level10_attempts: attempts + 1 }).eq("team_id", user.team_id);
           const remaining = 2 - (attempts + 1);
           if (remaining <= 0) {
